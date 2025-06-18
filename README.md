@@ -5,4 +5,7 @@ MSc thesis fungal repository holding fungal transcriptomic data for the analysis
 To create the sqlite3 database, run the following in the root directory of this repository.
 ```sqlite3 database/repository.sqlite < database/repository.sql```
 
-### Populating the SQLite Database
+## Populating the SQLite Database
+
+## Connecting the SQLite Database
+Change the full path of `repository.sqlite` defined in `./app/global.R` to the full path on your local machine

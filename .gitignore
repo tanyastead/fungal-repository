@@ -3,3 +3,6 @@
 
 # data files
 ./database/DEG_Data/*
+
+# populated repository
+./database/repository.sqlite
