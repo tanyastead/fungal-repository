@@ -4,6 +4,7 @@ PRAGMA foreign_keys = true;
 DROP TABLE IF EXISTS DEG;
 DROP TABLE IF EXISTS GeneContrasts;
 DROP TABLE IF EXISTS ExpContrasts;
+DROP TABLE IF EXISTS ExpKeywords;
 DROP TABLE IF EXISTS Experiments;
 DROP TABLE IF EXISTS GeneFunctions;
 DROP TABLE IF EXISTS Genes;
@@ -29,8 +30,15 @@ CREATE TABLE IF NOT EXISTS Experiments (
     author TEXT,
     year INTEGER,
     description TEXT,
-    keyword TEXT,
     PRIMARY KEY (experiment_id)
+);
+
+/* Create the ExpKeywords table */
+CREATE TABLE IF NOT EXISTS ExpKeywords (
+    experiment_id TEXT,
+    keyword TEXT,
+    PRIMARY KEY (experiment_id, keyword),
+    FOREIGN KEY (experiment_id) REFERENCES Experiments (experiment_id)
 );
 
 /* Create the ExpContrasts table*/

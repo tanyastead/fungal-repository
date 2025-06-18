@@ -7,7 +7,7 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$search, {
-    if (input$term == "Gene/Gene Property") {
+    if (input$term == "Gene (Name or Function)") {
       output$message <- renderText({
         paste0("gene has been searched: ", query())
       })
@@ -17,6 +17,16 @@ server <- function(input, output, session) {
       })
     }
   })
+  refSpec <- reactive({
+    req(input$refineSpecies)
+    input$refineSpecies
+  })
+  refKey <- reactive({
+    req(input$refineCondition)
+    input$refineCondition
+  })
+  output$speciesMessage <- renderText(paste0("species has been refined to: ", refSpec()))
+  output$keywordMessage <- renderText( refKey())
 
   # # Reactive expression to fetch selected table
   # selectedTable <- reactive({
