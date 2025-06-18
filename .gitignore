@@ -1,0 +1,5 @@
+# macOS system files
+.DS_Store
+
+# data files
+./database/DEG_Data/*
