@@ -11,7 +11,6 @@ DROP TABLE IF EXISTS Genes;
 /* Create the Genes table */
 CREATE TABLE IF NOT EXISTS Genes (
     gene_id TEXT,
-    genus TEXT,
     species TEXT,
     PRIMARY KEY (gene_id)
 );
