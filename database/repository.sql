@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS ExpContrasts (
 
 /* Create the GeneContrasts table */
 CREATE TABLE IF NOT EXISTS GeneContrasts (
-    gene_contrast INTEGER NOT NULL,
+    gene_contrast TEXT NOT NULL,
     gene_id TEXT,
     contrast TEXT,
     PRIMARY KEY (gene_contrast),
@@ -61,11 +61,11 @@ CREATE TABLE IF NOT EXISTS GeneContrasts (
 
 /* Create the DEG table */
 CREATE TABLE IF NOT EXISTS DEG (
-    gene_contrast INTEGER,
-    log2CF INTEGER,
-    lfcSE INTEGER,
-    pval INTEGER,
-    padj INTEGER,
+    gene_contrast TEXT,
+    log2FC REAL,
+    lfcSE REAL,
+    pval REAL,
+    padj REAL,
     PRIMARY KEY (gene_contrast),
     FOREIGN KEY (gene_contrast) REFERENCES GeneContrasts (gene_contrast)
 );

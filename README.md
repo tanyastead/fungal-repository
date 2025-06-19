@@ -7,5 +7,7 @@ To create the sqlite3 database, run the following in the root directory of this 
 
 ## Populating the SQLite Database
 
+--> files must either be .txt or .csv
+
 ## Connecting the SQLite Database
 Change the full path of `repository.sqlite` defined in `./app/global.R` to the full path on your local machine
