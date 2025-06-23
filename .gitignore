@@ -2,4 +2,10 @@
 .DS_Store
 
 # data files
-./database/DEG_Data/*
+database/DEG_Data/*
+
+# populated repository
+database/repository.sqlite
+
+# Notes
+NOTES.txt
