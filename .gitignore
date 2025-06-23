@@ -6,3 +6,6 @@ database/DEG_Data/*
 
 # populated repository
 database/repository.sqlite
+
+# Notes
+NOTES.txt

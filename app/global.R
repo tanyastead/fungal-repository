@@ -10,7 +10,7 @@ con <- dbConnect(SQLite(), "/Users/tanyastead/Documents/MSc_Bioinformatics/11_In
 tables <- dbListTables(con)
 
 # Show list of all species
-species <- dbGetQuery(con, "SELECT DISTINCT species FROM Genes")
+queriedSpecies <- dbGetQuery(con, "SELECT DISTINCT species FROM Genes")
 
 # Show list of all keywords
 keywords <- dbGetQuery(con, "SELECT DISTINCT keyword FROM ExpKeywords")

@@ -3,16 +3,28 @@ ui <- fluidPage(
   titlePanel("Fungal Transcriptomic Database"),
   br(),
   fluidRow(
-    column(4, textInput("query", NULL, placeholder = "Enter search text...")),
-    column(4, selectInput("term", NULL, choices = c("Gene (Name or Function)", "Keyword"))),
-    column(4, actionButton("search", "Search"))
-    ),
-  br(),
+    column(
+      width = 12,  # Full width
+      wellPanel(
+        fluidRow(
+          column(4, textInput("query", NULL, placeholder = "Enter search text...")),
+          column(4, selectInput("term", NULL, choices = c("Gene (Name or Function)", "Keyword"))),
+          column(4, actionButton("search", "Search"))
+        )
+      )
+    )
+  ),
+  # fluidRow(
+  #   column(4, textInput("query", NULL, placeholder = "Enter search text...")),
+  #   column(4, selectInput("term", NULL, choices = c("Gene (Name or Function)", "Keyword"))),
+  #   column(4, actionButton("search", "Search"))
+  #   ),
+  # br(),
   sidebarPanel(
     strong("Refine output:"),
     selectizeInput("refineSpecies", 
                    NULL, 
-                   choices = species, 
+                   choices = queriedSpecies$species, 
                    multiple = TRUE, 
                    options = list(placeholder = "Enter species...")),
     selectizeInput("refineCondition", 

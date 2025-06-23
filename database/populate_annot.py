@@ -19,15 +19,14 @@ parser.add_argument(
     default="./database/repository.sqlite"
 )
 
-
-
 args = parser.parse_args()
 
 # Connect to sqlite database
 conn = sqlite3.connect(args.database)
 
 # Define a set to store geneIDs
-geneID = set()
+geneID = []
+
 
 # Open and read the annotation file and populate the database
 with open(args.annotation_file, mode='r', encoding='utf-8') as file, \
@@ -51,18 +50,14 @@ with open(args.annotation_file, mode='r', encoding='utf-8') as file, \
     queryGeneID = 'SELECT gene_id FROM GeneFunctions;'
     cursor.execute(queryGeneID)
     # Store the geneIDs
-    geneIDs = [row[0] for row in cursor.fetchall()]
+    geneID.extend([row[0] for row in cursor.fetchall()])
 
-    """For each row in the annotation file, check if it is already stored in the database.
-        If not, add it to the database along with the molecular function, and add the geneID to the list.
-        If present, skip to the next row.
-    """
+    ## Input the geneIDs and functions
     for row in reader:
         try:
-            if row[0] not in geneIDs:
+            if row[0] not in geneID:
                 cursor.execute(f'INSERT INTO GeneFunctions VALUES ("{row[0]}", "{row[2]}");')
-                geneIDs.append(row[0])
+                geneID.append(row[0])
         except Exception as e:
-            print(f"Error inserting row {row}: {e}")
-            exit('Error: Data import failed')
+            exit(f'Error inserting row {row}: {e}')
 

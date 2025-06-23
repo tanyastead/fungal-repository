@@ -2,8 +2,8 @@ PRAGMA foreign_keys = true;
 
 /* Drop tables in reverse order of creating them */
 DROP TABLE IF EXISTS DEG;
-DROP TABLE IF EXISTS GeneContrasts;
 DROP TABLE IF EXISTS ExpContrasts;
+DROP TABLE IF EXISTS GeneContrasts;
 DROP TABLE IF EXISTS ExpKeywords;
 DROP TABLE IF EXISTS Experiments;
 DROP TABLE IF EXISTS GeneFunctions;
@@ -41,23 +41,25 @@ CREATE TABLE IF NOT EXISTS ExpKeywords (
     FOREIGN KEY (experiment_id) REFERENCES Experiments (experiment_id)
 );
 
-/* Create the ExpContrasts table*/
-CREATE TABLE IF NOT EXISTS ExpContrasts (
-    experiment_id TEXT,
-    contrast TEXT,
-    PRIMARY KEY (experiment_id, contrast),
-    FOREIGN KEY (experiment_id) REFERENCES Experiments (experiment_id)
-);
-
 /* Create the GeneContrasts table */
 CREATE TABLE IF NOT EXISTS GeneContrasts (
     gene_contrast TEXT NOT NULL,
     gene_id TEXT,
     contrast TEXT,
     PRIMARY KEY (gene_contrast),
-    FOREIGN KEY (gene_id) REFERENCES Genes (gene_id),
-    FOREIGN KEY (contrast) REFERENCES ExpContrasts (contrast)
+    FOREIGN KEY (gene_id) REFERENCES Genes (gene_id)
 );
+
+/* Create the ExpContrasts table*/
+CREATE TABLE IF NOT EXISTS ExpContrasts (
+    experiment_id TEXT,
+    contrast TEXT,
+    PRIMARY KEY (experiment_id, contrast),
+    FOREIGN KEY (experiment_id) REFERENCES Experiments (experiment_id),
+    FOREIGN KEY (contrast) REFERENCES GeneContrasts (contrast)
+);
+
+
 
 /* Create the DEG table */
 CREATE TABLE IF NOT EXISTS DEG (
