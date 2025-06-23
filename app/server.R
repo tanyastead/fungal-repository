@@ -6,28 +6,37 @@ server <- function(input, output, session) {
     input$query
   })
   
-  ## Based on gene_ID, return gene_ID (GeneFunctions), function (GeneFunctions), experiment (author) (Experiments), 
-  #experiment (year) (Experiments), description (Experiments), contrast (ExpContrasts)
-  
-  
+
   observeEvent(input$search, {
     if (input$term == "Gene (Name or Function)") {
       output$message <- renderText({
         paste0("gene has been searched: ", query())
       })
-      # tableQuery <- dbGetQuery(con, paste0("SELECT * FROM GeneFunctions WHERE gene_id = '", query(), "'"))
-      tableQuery <- dbGetQuery(con, paste0("SELECT Genes.gene_id, GeneFunctions.function, Experiments.author,
-      Experiments.year,Experiments.description, GeneContrasts.contrast FROM Genes JOIN GeneContrasts ON 
-      Genes.gene_id = GeneContrasts.gene_id JOIN GeneFunctions ON Genes.gene_id = GeneFunctions.gene_id JOIN 
-      ExpContrasts ON GeneContrasts.contrast = ExpContrasts.contrast JOIN Experiments ON ExpContrasts.experiment_id
-      = Experiments.experiment_id WHERE Genes.gene_id = '", query(), "';"))
-      typeof(tableQuery)
+      tableQuery <- dbGetQuery(con, paste0("SELECT Genes.gene_id, GeneFunctions.function, GeneContrasts.contrast, 
+          Experiments.author,Experiments.year,Experiments.description 
+          FROM Genes 
+          JOIN GeneContrasts ON Genes.gene_id = GeneContrasts.gene_id 
+          LEFT JOIN GeneFunctions ON Genes.gene_id = GeneFunctions.gene_id 
+          JOIN ExpContrasts ON GeneContrasts.contrast = ExpContrasts.contrast 
+          JOIN Experiments ON ExpContrasts.experiment_id = Experiments.experiment_id 
+          WHERE Genes.gene_id = '", query(), "';"))
       output$tableData <- DT::renderDataTable({
-        DT::datatable(tableQuery)
+        DT::datatable(tableQuery, 
+                      colnames = c("Gene", "Functional Annotation", "Contrasts", "Author", "Year", "Description"))
         })
     } else if (input$term == "Keyword") {
       output$message <- renderText({
         paste0("keyword has been searched: ", query())
+      })
+      tableQuery <- dbGetQuery(con, paste0("SELECT ExpContrasts.contrast, Experiments.author, Experiments.year, 
+          Experiments.description
+          FROM ExpKeywords
+          JOIN Experiments ON ExpKeywords.experiment_id = Experiments.experiment_id
+          JOIN ExpContrasts ON ExpKeywords.experiment_id = ExpContrasts.experiment_id
+          WHERE ExpKeywords.keyword = '", query(), "';"))
+      output$tableData <- DT::renderDataTable({
+        DT::datatable(tableQuery,
+                      colnames = c("Contrasts", "Author", "Year", "Description"))
       })
     }
   })

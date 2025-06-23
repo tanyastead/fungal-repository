@@ -15,4 +15,3 @@ queriedSpecies <- dbGetQuery(con, "SELECT DISTINCT species FROM Genes")
 
 # Show list of all keywords
 keywords <- dbGetQuery(con, "SELECT DISTINCT keyword FROM ExpKeywords")
-typeof(keywords)
