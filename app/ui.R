@@ -42,7 +42,25 @@ ui <- fluidPage(
               )
             ),
     nav_panel(title = "Experiments",
-              textOutput("message"),),
+              textOutput("message"),
+              sidebarPanel(
+                strong("Refine output:"),
+                selectizeInput("refineGene",
+                               NULL,
+                               choices = NULL,
+                               multiple = TRUE,
+                               options = list(placeholder = "Enter gene...")),
+                # pvalue
+                # padj
+                numericInput("lFC", 
+                             HTML("Log<sub>2</sub>-fold change"),
+                             value = 1,
+                             step = 0.1,
+                             min = 0),
+                radioButtons("lFCRegulation",
+                             NULL,
+                             choices = c("Up- or Downregulated", "Upregulated only", "Downregulated only"))
+              )),
     nav_panel(title = "Plots"),
     )
 )

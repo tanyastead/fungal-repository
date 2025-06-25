@@ -68,14 +68,14 @@ def insert_species(db_cursor, gene_id):
         known_gene_ids.append(gene_id)
 
 # Create a function to check if experiment recorded in Experiments table. If yes, return experimentID, if no, populate table and create experiment ID
-def insert_experiment(db_cursor, author, year, description, keywords):
+def insert_experiment(db_cursor, author, year, description, species, keywords):
     # generate the experiment id for this experiment
     exp_id = author + "_" + year
 
     if exp_id not in stored_exp_id:
         db_cursor.execute(
-            'INSERT INTO Experiments VALUES (?,?,?,?);',
-            (exp_id, author, year, description)
+            'INSERT INTO Experiments VALUES (?,?,?,?,?);',
+            (exp_id, author, year, description, species)
         )
         # also populate the ExpKeywords table
         for word in keywords:
@@ -98,20 +98,19 @@ def insert_exp_contrast(db_cursor, author, year, contrast):
     )
 
 # Populate GeneConstrasts  and DEG table
-def insert_gene_contrasts_DEG(db_cursor, gene_id, contrast, lFC, lfcSE, pval, padj):
+def insert_gene_contrasts_DEG(db_cursor, gene_id, contrast, lFC, lfcSE, pval, padj, exp_id):
     # create gene_contrast
     gene_contrast = gene_id + "_" + contrast
     # populate GeneContrasts table
     db_cursor.execute(
-        'INSERT INTO GeneContrasts VALUES (?,?,?);',
-        (gene_contrast, gene_id, contrast)
+        'INSERT INTO GeneContrasts VALUES (?,?,?,?);',
+        (gene_contrast, gene_id, contrast, exp_id)
     )
     # populate DEG table
     db_cursor.execute(
         'INSERT INTO DEG VALUES (?,?,?,?,?);',
         (gene_contrast, lFC, lfcSE, pval, padj)
     )
-
 
 
 with open(args.genes_file, mode='r', encoding='utf-8') as file, \
@@ -134,15 +133,15 @@ with open(args.genes_file, mode='r', encoding='utf-8') as file, \
         cursor.execute(query)
         known_gene_ids.extend([row[0] for row in cursor.fetchall()])
 
-        ## Insert genes data
-        for i, row in enumerate(reader):
-            try:
-                if i == 0:
-                    contrast = write_contrast(row[1], row[2])
-                insert_species(cursor, row[0])
-                insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10])
-            except Exception as e:
-                exit(f'Error: could not enter gene expression data: {e}')
+        # ## Insert genes data
+        # for i, row in enumerate(reader):
+        #     try:
+        #         if i == 0:
+        #             contrast = write_contrast(row[1], row[2])
+        #         insert_species(cursor, row[0])
+        #         insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10])
+        #     except Exception as e:
+        #         exit(f'Error: could not enter gene expression data: {e}')
     
         ## Determine which experiments are populated in the DB
         query = 'SELECT experiment_id FROM Experiments;'
@@ -159,28 +158,77 @@ with open(args.genes_file, mode='r', encoding='utf-8') as file, \
                 else:
                     raise ValueError('Unsupported file type.')
                 
+                ## Read and extract information from the exp file
                 exp_reader = csv.reader(exp_file, delimiter=delimeter2) # read the exp file
                 next(exp_reader) # skip the header row
+                keys = []
+                author = ""
+                year = ""
+                description = ""
 
-                ## Insert the experiment data
                 for exp_row in exp_reader:
                     keys = [key.strip() for key in exp_row[3].split(',')]
+                    author = exp_row[0]
+                    year = exp_row[1]
+                    description = exp_row[2]
+
+                ## Insert genes data
+                exp_id = author + "_" + year
+                for i, row in enumerate(reader):
                     try:
-                        insert_experiment(cursor, exp_row[0], exp_row[1], exp_row[2], keys)
-                        insert_exp_contrast(cursor, exp_row[0], exp_row[1], contrast)
+                        if i == 0:
+                            contrast = write_contrast(row[1], row[2])
+                        insert_species(cursor, row[0])
+                        insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10], exp_id)
                     except Exception as e:
-                        exit(f"Error: could not enter experiment data: {e}")
+                        exit(f'Error: could not enter gene expression data: {e}')
+
+                ## Insert the experiment data
+                try:
+                    insert_experiment(cursor, author, year, description, args.species, keys)
+                    insert_exp_contrast(cursor, author, year, contrast)
+                except Exception as e:
+                    exit(f"Error: could not enter experiment data: {e}")
+                # for exp_row in exp_reader:
+                #     keys = [key.strip() for key in exp_row[3].split(',')]
+                #     try:
+                #         insert_experiment(cursor, exp_row[0], exp_row[1], exp_row[2], args.species, keys)
+                #         insert_exp_contrast(cursor, exp_row[0], exp_row[1], contrast)
+                #     except Exception as e:
+                #         exit(f"Error: could not enter experiment data: {e}")
                 
 
         elif (args.author and args.year and args.description and args.keyword):
+            exp_id = args.author + "_" + args.year
+            ## Insert genes data
+            for i, row in enumerate(reader):
+                try:
+                    if i == 0:
+                        contrast = write_contrast(row[1], row[2])
+                    insert_species(cursor, row[0])
+                    insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10], exp_id)
+                except Exception as e:
+                    exit(f'Error: could not enter gene expression data: {e}')
+
             try:
-                insert_experiment(cursor, args.author, args.year, args.description, args.keyword)
+                insert_experiment(cursor, args.author, args.year, args.description, args.species, args.keyword)
                 insert_exp_contrast(cursor, args.author, args.year, contrast)   
             except Exception as e:
                 exit(f"Error: could not enter experiment data: {e}")
 
 
         elif (args.author and args.year):
+            exp_id = args.author + "_" + args.year
+            ## Insert genes data
+            for i, row in enumerate(reader):
+                try:
+                    if i == 0:
+                        contrast = write_contrast(row[1], row[2])
+                    insert_species(cursor, row[0])
+                    insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10], exp_id)
+                except Exception as e:
+                    exit(f'Error: could not enter gene expression data: {e}')
+
             try:
                 insert_exp_contrast(cursor, args.author, args.year, contrast)
             except Exception as e:
