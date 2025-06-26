@@ -93,6 +93,19 @@ ui <- fluidPage(
                 )
               ),
     nav_panel(title = "Plots",
+              fluidRow(
+                column(
+                  width = 12,
+                  div(
+                    style = "background-color: #f0f0f0; padding: 10px; margin-bottom: 10px;",
+                    h4("Experiment Summary"),
+                    textOutput("plotsAuthorYear"),
+                    uiOutput("plotsDescription"),
+                    textOutput("plotsContrast")
+                  )
+                )
+              ),
+              plotlyOutput("volcanoPlot")
               ),
     )
 )

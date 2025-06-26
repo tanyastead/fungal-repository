@@ -85,7 +85,7 @@ server <- function(input, output, session) {
           FROM ExpKeywords
           JOIN Experiments ON ExpKeywords.experiment_id = Experiments.experiment_id
           JOIN ExpContrasts ON ExpKeywords.experiment_id = ExpContrasts.experiment_id
-          JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
+
           WHERE ExpKeywords.keyword = '", input$query, "';"))
       
       # Set the contrast column as clickable links, and combine contrasts into a single cell
@@ -208,12 +208,18 @@ server <- function(input, output, session) {
     #   datatable(geneValues)
     # })
     
-    # Update experiment description
+    # Update experiment description in Experiments and Plots tabs
     output$experimentAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
     output$experimentDescription <- renderUI({
       HTML(paste0("<em>", selectedDescription(), "</em>"))
       })
     output$experimentContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
+    
+    output$plotsAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
+    output$plotsDescription <- renderUI({
+      HTML(paste0("<em>", selectedDescription(), "</em>"))
+    })
+    output$plotsContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
     
     # Refine side panel
     updateSelectizeInput(session,
@@ -265,7 +271,7 @@ server <- function(input, output, session) {
 
     datatable(filteredExpData(),
               rownames = FALSE,
-              colnames = c("Gene", "Functional Annotation", HTML("Log<sub>2</sub>-Fold Change"), 
+              colnames = c("Gene", "Functional Annotation", HTML("Log<sub>2</sub>-Fold Change"),
                            "Log-Fold Change Standard Error",  HTML("P&#8209;Value"), HTML("P&#8209;Adjusted")),
               escape = FALSE)
   })
@@ -280,4 +286,70 @@ server <- function(input, output, session) {
   })
   
   
+  ## Generate interactive volcano plot
+  output$volcanoPlot <- renderPlotly({
+    # Subset the data to get just the log2FC and pvalue
+    entire_df <- filteredExpData()
+    subset_df <- entire_df[c("gene_id", "log2FC", "pval")]
+    
+    # Set significant values for log2FC and pvalue
+    if (!is.null(input$lFC) && !is.na(input$lFC)){
+      fold <- input$lFC
+    } else {
+      fold <- 1
+    }
+    if (!is.null(input$pvalue) && !is.na(input$pvalue)){
+      pval <- input$pvalue
+    } else {
+      pval <- 0.05
+    }
+    
+    # Add a grouping column, with a default value of NotSignificant
+    subset_df["group"] <- "NotSignificant"
+    
+    # Change the grouping for entries with significance but not enough fold change
+    subset_df[which(subset_df['pval'] < pval & abs(subset_df['log2FC']) < fold), "group"] <- "Significant"
+    # change the grouping for the entries a large enough Fold change but not a low enough p value
+    subset_df[which(subset_df['pval'] > pval & abs(subset_df['log2FC']) > fold), "group"] <- "FoldChange"
+    # change the grouping for the entries with both significance and large enough fold change
+    subset_df[which(subset_df['pval'] < pval & abs(subset_df['log2FC']) > fold), "group"] <- "Significant&FoldChange"
+    
+    # Find and label the top peaks..
+    top_peaks <- subset_df[with(subset_df, order(log2FC, pval)),][1:5,]
+    top_peaks <- rbind(top_peaks, subset_df[with(subset_df, order(-log2FC, pval)),][1:5,])
+    
+    # Add gene labels for all of the top genes we found
+    a <- list()
+    for (i in seq_len(nrow(top_peaks))) {
+      m <- top_peaks[i, ]
+      a[[i]] <- list(
+        x = m[["log2FC"]],
+        y = -log10(m[["pval"]]),
+        text = m[["gene_id"]],
+        xref = "x",
+        yref = "y",
+        showarrow = TRUE,
+        arrowhead = 0.5,
+        ax = 20,
+        ay = -40
+      )
+    }
+    
+    # make the Plot.ly plot
+    p <- plot_ly(
+      data = subset_df,
+      x = ~log2FC,
+      y = ~-log10(pval),
+      text = ~gene_id,
+      mode = "markers",
+      type = "scatter",
+      color = ~group
+    ) %>%
+      layout(title = "Volcano Plot", annotations = a)
+    
+    # p <- plot_ly(data = subset_df, x = log2FC, y = -log10(pval), text = gene_id, mode = "markers", color = group) %>% 
+    #   layout(title ="Volcano Plot") %>%
+    #   layout(annotations = a)
+    ggplotly(p)
+  })
 }

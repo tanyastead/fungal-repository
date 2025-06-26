@@ -5,6 +5,10 @@ library(RSQLite)
 library(DT)
 library(dplyr)
 library(stringr)
+library(ggplot2)
+library(gridExtra)
+library(plotly)
+library(bslib)
 
 # Connect to database
 con <- dbConnect(SQLite(), "/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/database/repository.sqlite")
