@@ -30,7 +30,8 @@ ui <- fluidPage(
                 tags$h6("To:"),
                 textInput("toYear", NULL, placeholder = "Year..."),
                 br(),
-                actionButton("export", "Export Table", icon = icon("download"))
+                actionButton("clearResults", "Clear"),
+                actionButton("exportResults", "Export Table", icon = icon("download"))
                 
               ),
               mainPanel(
@@ -42,7 +43,18 @@ ui <- fluidPage(
               )
             ),
     nav_panel(title = "Experiments",
-              textOutput("message"),
+              fluidRow(
+                column(
+                  width = 12,
+                  div(
+                    style = "background-color: #f0f0f0; padding: 10px; margin-bottom: 10px;",
+                    h4("Experiment Summary"),
+                    textOutput("experimentAuthorYear"),
+                    uiOutput("experimentDescription"),
+                    textOutput("experimentContrast")
+                  )
+                )
+              ),
               sidebarPanel(
                 strong("Refine output:"),
                 selectizeInput("refineGene",
@@ -50,17 +62,36 @@ ui <- fluidPage(
                                choices = NULL,
                                multiple = TRUE,
                                options = list(placeholder = "Enter gene...")),
-                # pvalue
-                # padj
-                numericInput("lFC", 
+                # refine output - gene function??
+                numericInput("pvalue",
+                             "p-value <",
+                             value = NULL,
+                             min = 0,
+                             max = 1,
+                             step = 0.01),
+                numericInput("padj",
+                             "p-adjusted <",
+                             value = NULL,
+                             min = 0,
+                             max = 1,
+                             step = 0.01),
+                numericInput("lFC",
                              HTML("Log<sub>2</sub>-fold change"),
-                             value = 1,
+                             value = NULL,
                              step = 0.1,
                              min = 0),
                 radioButtons("lFCRegulation",
                              NULL,
-                             choices = c("Up- or Downregulated", "Upregulated only", "Downregulated only"))
-              )),
+                             choices = c("Up- or Downregulated", "Upregulated only", "Downregulated only")),
+                br(),
+                actionButton("clearExperiments", "Clear"),
+                actionButton("exportExperiments", "Export Table", icon = icon("download"))
+              ),
+              mainPanel(
+                DTOutput("experimentTable"),
+                textOutput("testMessage")
+                )
+              ),
     nav_panel(title = "Plots"),
     )
 )

@@ -12,8 +12,10 @@ server <- function(input, output, session) {
   selectedAuthor <- reactiveVal()
   selectedYear <- reactiveVal()
   exp_id <- reactiveVal()
+  selectedDescription <- reactiveVal()
+  experimentData <- reactiveVal()
   
-  
+  ## SEARCH TAB
   ## Search bar queries DB and returns table of results
   observeEvent(input$search, {
     if (input$term == "Gene (Name or Function)") {
@@ -34,6 +36,7 @@ server <- function(input, output, session) {
                                   'contrast: \'', contrast, '\', ',
                                   'author: \'', author, '\', ',
                                   'year: ', year, ', ',
+                                  'description: \'', description, '\', ',
                                   'priority: \'event\'',
                                   '})">',
                                   contrast,
@@ -72,6 +75,7 @@ server <- function(input, output, session) {
                                    'contrast: \'', contrast, '\', ',
                                    'author: \'', author, '\', ',
                                    'year: ', year, ', ',
+                                   'description: \'', description, '\', ',
                                    'nonce: Math.random()',
                                    '}, {priority: \'event\'})">',
                                    contrast,
@@ -96,6 +100,7 @@ server <- function(input, output, session) {
   })
   
   
+  ## RESULTS TAB
   ## Refine the query table
   filteredData <- reactive({
     req(queryData())
@@ -133,7 +138,7 @@ server <- function(input, output, session) {
                   escape = FALSE)
   })
   
-  
+  ## EXPERIMENTS TAB
   ## Navigate to the experiments tab when a contrast is clicked
   observeEvent(input$goToTab, {
     # save the name of the selected contrast, author and year
@@ -141,37 +146,119 @@ server <- function(input, output, session) {
     selectedAuthor(input$goToTab$author)
     selectedYear(input$goToTab$year)
     exp_id(paste0(selectedAuthor(), "_", selectedYear()))
+    selectedDescription(input$goToTab$description)
     
-    
+    # Navigate to the experiments tab
     updateTabsetPanel(session, "navMenu", selected = "Experiments")
     showTab("navMenu", target = "Experiments")
     showTab("navMenu", target = "Plots")
     
-    
-    # query experiments table here?
-    
-    # output$message <- renderText(paste0("contrast selected: ", input$goToTab$contrast, input$goToTab$author, input$goToTab$year))
-  })
-
-  
-  ## Update the Refine Output sidepanel in the Experiments tab
-  # Identify possible genes based on selected contrast
-  queriedGenes <- reactive({
-    req(selectedContrast())
-    
-    dbGetQuery(con, paste0(
-      "SELECT DISTINCT gene_id FROM GeneContrasts WHERE contrast = '",
-      selectedContrast(), "' and experiment_id = '",exp_id(),"';"
+    # Identify possible genes and relevant values based on selected contrast
+    geneValues <- dbGetQuery(con, paste0(
+      "SELECT GeneContrasts.gene_id, GeneFunctions.gene_function, DEG.log2FC, DEG.lfcSE, DEG.pval, DEG.padj
+      FROM GeneContrasts
+      LEFT JOIN GeneFunctions ON GeneContrasts.gene_id = GeneFunctions.gene_id
+      JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
+      WHERE contrast = '", selectedContrast(), "' and experiment_id = '",exp_id(),"';"
     ))
-  })
-  # Update refineGene with identified genes
-  observeEvent(selectedContrast(), {
-    req(selectedContrast())
-    genes <- queriedGenes()
+    
+    experimentData(geneValues)
+    
+    # Output the table
+    # output$experimentTable <- renderDataTable({
+    #   datatable(geneValues)
+    # })
+    
+    # Update experiment description
+    output$experimentAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
+    output$experimentDescription <- renderUI({
+      HTML(paste0("<em>", selectedDescription(), "</em>"))
+      })
+    output$experimentContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
+    
+    # Refine side panel
     updateSelectizeInput(session,
                          "refineGene",
-                         choices = genes$gene_id,
+                         choices = geneValues$gene_id,
                          server = TRUE)
   })
+  
+  ## Refine the Experiments table
+  filteredExpData <- reactive({
+    req(experimentData())
+    data <- experimentData()
+    output$testMessage <- renderText(paste0("currently stored padj: ", input$padj))
+    # Filter based on gene_id
+    if (!is.null(input$refineGene)){
+      data <- filter(data, gene_id %in% input$refineGene)
+    }
+    
+    # Filter based on pval
+    if (!is.null(input$pvalue) && !is.na(input$pvalue)){
+      data <- filter(data, pval < input$pvalue)
+    }
+    
+    # Filter based on padj
+    if (!is.null(input$padj) && !is.na(input$padj)){
+      data <- filter(data, padj < input$padj)
+    }
+    
+    # Filter based on logFC
+    ### if radio button == a, then do a
+    if (!is.null(input$lFC) && !is.na(input$lFC)){
+      if (input$lFCRegulation == "Up- or Downregulated"){
+        data <- filter(data, log2FC >= input$lFC | log2FC <= -input$lFC)
+      }
+      if (input$lFCRegulation == "Upregulated only"){
+        data <- filter(data, log2FC >= input$lFC)
+      }
+      if (input$lFCRegulation == "Downregulated only"){
+        data <- filter(data, log2FC <= -input$lFC)
+      }
+    }
+    
+    return(data)
+  })
+
+  # ## Render the experiment table in the experiments tab
+  output$experimentTable <- renderDataTable({
+    req(filteredExpData())
+
+    datatable(filteredExpData(),
+              rownames = FALSE,
+              colnames = c("Gene", "Functional Annotation", HTML("Log<sub>2</sub>-Fold Change"), 
+                           "Log-Fold Change Standard Error",  HTML("P&#8209;Value"), HTML("P&#8209;Adjusted")),
+              escape = FALSE)
+  })
+  
+  ## Update the Experiments tab
+  # Identify possible genes based on selected contrast
+  # queriedGenes <- reactive({
+  #   req(selectedContrast())
+  #   
+  #   dbGetQuery(con, paste0(
+  #     "SELECT DISTINCT gene_id FROM GeneContrasts WHERE contrast = '",
+  #     selectedContrast(), "' and experiment_id = '",exp_id(),"';"
+  #   ))
+  # })
+  # Update variables in Experiments tab
+  # observeEvent(selectedContrast(), {
+  #   req(selectedContrast())
+  #   
+  #   # Update experiment description
+  #   output$experimentAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
+  #   output$experimentDescription <- renderUI({
+  #     HTML(paste0("<em>", selectedDescription(), "</em>"))
+  #   })
+  #   output$experimentContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
+  #   
+  #   
+  #   # update side panel
+  #   genes <- queriedGenes()
+  #   # updateSelectizeInput(session,
+  #   #                      "refineGene",
+  #   #                      choices = genes$gene_id,
+  #   #                      server = TRUE)
+  # })
   
 }
