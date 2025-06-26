@@ -92,6 +92,7 @@ ui <- fluidPage(
                 textOutput("testMessage")
                 )
               ),
-    nav_panel(title = "Plots"),
+    nav_panel(title = "Plots",
+              ),
     )
 )

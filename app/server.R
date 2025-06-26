@@ -15,18 +15,35 @@ server <- function(input, output, session) {
   selectedDescription <- reactiveVal()
   experimentData <- reactiveVal()
   
+  # refSpec <- reactiveVal()
+  
   ## SEARCH TAB
   ## Search bar queries DB and returns table of results
   observeEvent(input$search, {
+    ## Clear any previously inputted values in side panels
+    # For Results side panel
+    updateSelectizeInput(session, "refineSpecies", selected = character(0))
+    updateSelectizeInput(session, "refineCondition", selected = character(0))
+    updateTextInput(session, "fromYear", value = "")
+    updateTextInput(session, "toYear", value = "")
+    
+    # For Experiments side panel
+    updateSelectizeInput(session, "refineGene", selected = character(0))
+    updateNumericInput(session, "pvalue", value = NA)
+    updateNumericInput(session, "padj", value = NA)
+    updateNumericInput(session, "lFC", value = NA)
+    updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
+    
     if (input$term == "Gene (Name or Function)") {
       req(input$query)
       # Query the DB
-      tableQuery <- dbGetQuery(con, paste0("SELECT Genes.species, Genes.gene_id, GeneFunctions.gene_function, 
+      tableQuery <- dbGetQuery(con, paste0("SELECT Genes.species, ExpKeywords.keyword, Genes.gene_id, GeneFunctions.gene_function, 
           GeneContrasts.contrast, Experiments.author,Experiments.year,Experiments.description 
           FROM Genes 
           JOIN GeneContrasts ON Genes.gene_id = GeneContrasts.gene_id 
           LEFT JOIN GeneFunctions ON Genes.gene_id = GeneFunctions.gene_id 
           JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
+          JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
           WHERE Genes.gene_id = '", input$query, "';"))
       
       # Set the contrast column as clickable links, and combine contrasts into a single cell
@@ -44,15 +61,17 @@ server <- function(input, output, session) {
         # groups table where ALL listed values are identical
         group_by(species, gene_id, gene_function, author, year, description) %>% 
         # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
-        summarise(contrasts = paste(hyperlink, collapse = "<br>"), .groups = 'drop') %>%
+        summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"),
+                  keywords = paste(unique(keyword), collapse = "; "),
+                  .groups = 'drop') %>%
         # sort the order of the columns
-        select(species, gene_id, gene_function, contrasts, author, year, description)
+        select(species, keywords, gene_id, gene_function, contrasts, author, year, description)
       
       # Save the processedTable outside the observeEvent
       queryData(processedTable)
       
       # Save specific column names outside the observeEvent
-      colnames(c("Species","Gene", "Functional Annotation", "Contrasts", "Author", "Year", "Description"))
+      colnames(c("Species","Keywords","Gene", "Functional Annotation", "Contrasts", "Author", "Year", "Description"))
       
       # Switch view to the Results tab
       showTab("navMenu", target = "Results")
@@ -61,11 +80,12 @@ server <- function(input, output, session) {
     } else if (input$term == "Keyword") {
       req(input$query)
       # Query the DB
-      tableQuery <- dbGetQuery(con, paste0("SELECT Experiments.species, ExpContrasts.contrast, Experiments.author, 
+      tableQuery <- dbGetQuery(con, paste0("SELECT Experiments.species, ExpKeywords.keyword, ExpContrasts.contrast, Experiments.author, 
           Experiments.year, Experiments.description
           FROM ExpKeywords
           JOIN Experiments ON ExpKeywords.experiment_id = Experiments.experiment_id
           JOIN ExpContrasts ON ExpKeywords.experiment_id = ExpContrasts.experiment_id
+          JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
           WHERE ExpKeywords.keyword = '", input$query, "';"))
       
       # Set the contrast column as clickable links, and combine contrasts into a single cell
@@ -83,15 +103,17 @@ server <- function(input, output, session) {
         # groups table where ALL listed values are identical
         group_by(species, author, year, description) %>% 
         # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
-        summarise(contrasts = paste(hyperlink, collapse = "<br>"), .groups = 'drop') %>%
+        summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"), 
+                  keywords = paste(unique(keyword), collapse = "; "),
+                  .groups = 'drop') %>%
         # sort the order of the columns
-        select(species, contrasts, author, year, description)
+        select(species, keywords, contrasts, author, year, description)
       
       # Save the processedTable outside the observeEvent
       queryData(processedTable)
       
       # save specific column names
-      colnames(c("Species","Contrasts", "Author", "Year", "Description"))
+      colnames(c("Species","Keywords", "Contrasts", "Author", "Year", "Description"))
 
       # open the Results tab
       showTab("navMenu", target = "Results")
@@ -107,6 +129,8 @@ server <- function(input, output, session) {
     
     data <- queryData()
     
+    # refSpec(input$refineSpecies)
+    
     # Filter based on year
     if (!is.null(input$fromYear) && input$fromYear != "") {
       data <- dplyr::filter(data, year >= input$fromYear)
@@ -119,12 +143,19 @@ server <- function(input, output, session) {
     # Filter based on species
     if (!is.null(input$refineSpecies)){
       data <- dplyr::filter(data, species %in% input$refineSpecies)
-      output$speciesMessage <- renderPrint(paste0("species has been redifned to: ", typeof(input$refineSpecies)))
+      
+    }
+    
+    # Filter based on keyword
+    if (!is.null(input$refineCondition)){
+      keyword_pattern <- str_c(input$refineCondition, collapse = "|")
+      data <- data %>%
+        filter(str_detect(keywords, regex(keyword_pattern, ignore_case = TRUE)))
+      output$speciesMessage <- renderText(paste0("species has been redifned to: ", (input$refineCondition)))
     }
     
     return(data)
   })
-  
   
   
   ## Render the query table in the results tab
@@ -134,8 +165,16 @@ server <- function(input, output, session) {
     DT::datatable(filteredData(),
                   rownames = FALSE,
                   colnames = colnames(),
-                  options = list(columnDefs = list(list(visible = FALSE, targets = c(0)))), # Hide the 1st column (species)
+                  options = list(columnDefs = list(list(visible = FALSE, targets = c(0,1)))), # Hide the 1st column (species)
                   escape = FALSE)
+  })
+  
+  ## Clear button resets side panel values
+  observeEvent(input$clearResults, {
+    updateSelectizeInput(session, "refineSpecies", selected = character(0))
+    updateSelectizeInput(session, "refineCondition", selected = character(0))
+    updateTextInput(session, "fromYear", value = "")
+    updateTextInput(session, "toYear", value = "")
   })
   
   ## EXPERIMENTS TAB
@@ -187,7 +226,7 @@ server <- function(input, output, session) {
   filteredExpData <- reactive({
     req(experimentData())
     data <- experimentData()
-    output$testMessage <- renderText(paste0("currently stored padj: ", input$padj))
+
     # Filter based on gene_id
     if (!is.null(input$refineGene)){
       data <- filter(data, gene_id %in% input$refineGene)
@@ -231,34 +270,14 @@ server <- function(input, output, session) {
               escape = FALSE)
   })
   
-  ## Update the Experiments tab
-  # Identify possible genes based on selected contrast
-  # queriedGenes <- reactive({
-  #   req(selectedContrast())
-  #   
-  #   dbGetQuery(con, paste0(
-  #     "SELECT DISTINCT gene_id FROM GeneContrasts WHERE contrast = '",
-  #     selectedContrast(), "' and experiment_id = '",exp_id(),"';"
-  #   ))
-  # })
-  # Update variables in Experiments tab
-  # observeEvent(selectedContrast(), {
-  #   req(selectedContrast())
-  #   
-  #   # Update experiment description
-  #   output$experimentAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
-  #   output$experimentDescription <- renderUI({
-  #     HTML(paste0("<em>", selectedDescription(), "</em>"))
-  #   })
-  #   output$experimentContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
-  #   
-  #   
-  #   # update side panel
-  #   genes <- queriedGenes()
-  #   # updateSelectizeInput(session,
-  #   #                      "refineGene",
-  #   #                      choices = genes$gene_id,
-  #   #                      server = TRUE)
-  # })
+  ## Clear button resets side panel values
+  observeEvent(input$clearExperiments, {
+    updateSelectizeInput(session, "refineGene", selected = character(0))
+    updateNumericInput(session, "pvalue", value = NA)
+    updateNumericInput(session, "padj", value = NA)
+    updateNumericInput(session, "lFC", value = NA)
+    updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
+  })
+  
   
 }

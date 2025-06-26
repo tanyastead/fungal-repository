@@ -4,6 +4,7 @@ library(DBI)
 library(RSQLite)
 library(DT)
 library(dplyr)
+library(stringr)
 
 # Connect to database
 con <- dbConnect(SQLite(), "/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/database/repository.sqlite")
