@@ -39,7 +39,8 @@ ui <- fluidPage(
                 textOutput("speciesMessage"),
                 textOutput("keywordMessage"),
                 textOutput("fromYearMessage"),
-                textOutput("toYearMessage")
+                textOutput("toYearMessage"),
+                verbatimTextOutput("troubleshootingCondition")
               )
             ),
     nav_panel(title = "Experiments",

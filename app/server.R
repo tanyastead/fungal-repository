@@ -80,13 +80,30 @@ server <- function(input, output, session) {
     } else if (input$term == "Keyword") {
       req(input$query)
       # Query the DB
-      tableQuery <- dbGetQuery(con, paste0("SELECT Experiments.species, ExpKeywords.keyword, ExpContrasts.contrast, Experiments.author, 
-          Experiments.year, Experiments.description
-          FROM ExpKeywords
-          JOIN Experiments ON ExpKeywords.experiment_id = Experiments.experiment_id
-          JOIN ExpContrasts ON ExpKeywords.experiment_id = ExpContrasts.experiment_id
-
-          WHERE ExpKeywords.keyword = '", input$query, "';"))
+      # tableQuery <- dbGetQuery(con, paste0("SELECT Experiments.species, ExpKeywords.keyword, ExpContrasts.contrast, Experiments.author, 
+      #     Experiments.year, Experiments.description
+      #     FROM ExpKeywords
+      #     JOIN Experiments ON ExpKeywords.experiment_id = Experiments.experiment_id
+      #     JOIN ExpContrasts ON ExpKeywords.experiment_id = ExpContrasts.experiment_id
+      # 
+      #     WHERE ExpKeywords.keyword = '", input$query, "';"))
+      tableQuery <- dbGetQuery(con, paste0(
+        "SELECT 
+            Experiments.species, 
+            AllKeywords.keyword, 
+            ExpContrasts.contrast, 
+            Experiments.author, 
+            Experiments.year, 
+            Experiments.description
+        FROM Experiments
+        JOIN ExpContrasts ON Experiments.experiment_id = ExpContrasts.experiment_id
+        JOIN ExpKeywords AS AllKeywords ON Experiments.experiment_id = AllKeywords.experiment_id
+        WHERE Experiments.experiment_id IN (
+                SELECT experiment_id 
+                FROM ExpKeywords 
+                WHERE keyword = '",input$query,"'
+                );"
+      ))
       
       # Set the contrast column as clickable links, and combine contrasts into a single cell
       processedTable <- tableQuery %>%
@@ -152,8 +169,9 @@ server <- function(input, output, session) {
       data <- data %>%
         filter(str_detect(keywords, regex(keyword_pattern, ignore_case = TRUE)))
       output$speciesMessage <- renderText(paste0("species has been redifned to: ", (input$refineCondition)))
+      
     }
-    
+    output$troubleshootingCondition <- renderPrint(data$keywords)
     return(data)
   })
   
