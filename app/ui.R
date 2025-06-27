@@ -86,10 +86,41 @@ ui <- fluidPage(
                              choices = c("Up- or Downregulated", "Upregulated only", "Downregulated only")),
                 br(),
                 actionButton("clearExperiments", "Clear"),
-                actionButton("exportExperiments", "Export Table", icon = icon("download"))
+                # actionButton("exportExperiments", "Export Table", icon = icon("download"))
               ),
               mainPanel(
-                DTOutput("experimentTable"),
+                navset_card_underline(
+                  nav_panel("Data Table", 
+                            # actionButton("exportExpTable", "Export Table", icon = icon("download"))
+                            tags$div(
+                              style = "text-align: right;",
+                              actionButton(
+                                inputId = "exportExpTable", 
+                                label = "Export Table", 
+                                icon = icon("download"),
+                                style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
+                              )
+                            ),
+                            br(),
+                            DTOutput("experimentTable")),
+                  nav_panel("Volcano Plot",
+                            # actionButton("exportVolcano", "Export Plot", icon = icon("download")),
+                            tags$div(
+                              style = "text-align: right;",
+                              actionButton(
+                                inputId = "exportVolcano", 
+                                label = "Export Plot", 
+                                icon = icon("download"),
+                                style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
+                              )
+                            ),
+                            br(),
+                            plotlyOutput("volcanoPlot")),
+                  nav_panel("Expression Heatmap",
+                            br(),
+                            "Placeholder for gene/function expression heatmap (maybe interactive)")
+                ),
+                # DTOutput("experimentTable"),
                 textOutput("testMessage")
                 )
               ),
@@ -106,7 +137,7 @@ ui <- fluidPage(
                   )
                 )
               ),
-              plotlyOutput("volcanoPlot")
+              # plotlyOutput("volcanoPlot")
               ),
     )
 )
