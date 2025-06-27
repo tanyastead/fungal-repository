@@ -19,8 +19,18 @@ CREATE TABLE IF NOT EXISTS Genes (
 /* Create the GeneFunctions table */
 CREATE TABLE IF NOT EXISTS GeneFunctions (
     gene_id TEXT,
-    function TEXT,
+    gene_function TEXT,
     PRIMARY KEY (gene_id),
+    FOREIGN KEY (gene_id) REFERENCES Genes (gene_id)
+);
+
+/* Create the GeneContrasts table */
+CREATE TABLE IF NOT EXISTS GeneContrasts (
+    gene_contrast TEXT NOT NULL,
+    gene_id TEXT,
+    contrast TEXT,
+    experiment_id TEXT,
+    PRIMARY KEY (gene_contrast),
     FOREIGN KEY (gene_id) REFERENCES Genes (gene_id)
 );
 
@@ -30,7 +40,10 @@ CREATE TABLE IF NOT EXISTS Experiments (
     author TEXT,
     year INTEGER,
     description TEXT,
-    PRIMARY KEY (experiment_id)
+    species TEXT,
+    PRIMARY KEY (experiment_id),
+    FOREIGN KEY (species) REFERENCES Genes (species),
+    FOREIGN KEY (experiment_id) REFERENCES GeneContrasts (experiment_id)
 );
 
 /* Create the ExpKeywords table */
@@ -41,15 +54,6 @@ CREATE TABLE IF NOT EXISTS ExpKeywords (
     FOREIGN KEY (experiment_id) REFERENCES Experiments (experiment_id)
 );
 
-/* Create the GeneContrasts table */
-CREATE TABLE IF NOT EXISTS GeneContrasts (
-    gene_contrast TEXT NOT NULL,
-    gene_id TEXT,
-    contrast TEXT,
-    PRIMARY KEY (gene_contrast),
-    FOREIGN KEY (gene_id) REFERENCES Genes (gene_id)
-);
-
 /* Create the ExpContrasts table*/
 CREATE TABLE IF NOT EXISTS ExpContrasts (
     experiment_id TEXT,
@@ -58,8 +62,6 @@ CREATE TABLE IF NOT EXISTS ExpContrasts (
     FOREIGN KEY (experiment_id) REFERENCES Experiments (experiment_id),
     FOREIGN KEY (contrast) REFERENCES GeneContrasts (contrast)
 );
-
-
 
 /* Create the DEG table */
 CREATE TABLE IF NOT EXISTS DEG (
