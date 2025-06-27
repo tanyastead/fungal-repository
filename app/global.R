@@ -1,4 +1,6 @@
 # global.R
+
+# Load libraries
 library(shiny)
 library(DBI)
 library(RSQLite)
@@ -9,6 +11,9 @@ library(ggplot2)
 library(gridExtra)
 library(plotly)
 library(bslib)
+
+# Source functions
+source("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/app/plots.R")
 
 # Connect to database
 con <- dbConnect(SQLite(), "/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/database/repository.sqlite")

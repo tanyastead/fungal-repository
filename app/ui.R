@@ -115,7 +115,8 @@ ui <- fluidPage(
                               )
                             ),
                             br(),
-                            plotlyOutput("volcanoPlot")),
+                            plotlyOutput("volcanoPlot")
+                            ),
                   nav_panel("Expression Heatmap",
                             br(),
                             "Placeholder for gene/function expression heatmap (maybe interactive)")

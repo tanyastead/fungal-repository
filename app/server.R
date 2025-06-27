@@ -303,13 +303,10 @@ server <- function(input, output, session) {
     updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
   })
   
-  
   ## Generate interactive volcano plot
   output$volcanoPlot <- renderPlotly({
-    # Subset the data to get just the log2FC and pvalue
     entire_df <- filteredExpData()
-    subset_df <- entire_df[c("gene_id", "log2FC", "pval")]
-    
+      
     # Set significant values for log2FC and pvalue
     if (!is.null(input$lFC) && !is.na(input$lFC)){
       fold <- input$lFC
@@ -322,52 +319,79 @@ server <- function(input, output, session) {
       pval <- 0.05
     }
     
-    # Add a grouping column, with a default value of NotSignificant
-    subset_df["group"] <- "NotSignificant"
+    # create ggplot volcano plot
+    p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval)
     
-    # Change the grouping for entries with significance but not enough fold change
-    subset_df[which(subset_df['pval'] < pval & abs(subset_df['log2FC']) < fold), "group"] <- "Significant"
-    # change the grouping for the entries a large enough Fold change but not a low enough p value
-    subset_df[which(subset_df['pval'] > pval & abs(subset_df['log2FC']) > fold), "group"] <- "FoldChange"
-    # change the grouping for the entries with both significance and large enough fold change
-    subset_df[which(subset_df['pval'] < pval & abs(subset_df['log2FC']) > fold), "group"] <- "Significant&FoldChange"
-    
-    # Find and label the top peaks..
-    top_peaks <- subset_df[with(subset_df, order(log2FC, pval)),][1:5,]
-    top_peaks <- rbind(top_peaks, subset_df[with(subset_df, order(-log2FC, pval)),][1:5,])
-    
-    # Add gene labels for all of the top genes we found
-    a <- list()
-    for (i in seq_len(nrow(top_peaks))) {
-      m <- top_peaks[i, ]
-      a[[i]] <- list(
-        x = m[["log2FC"]],
-        y = -log10(m[["pval"]]),
-        text = m[["gene_id"]],
-        xref = "x",
-        yref = "y",
-        showarrow = TRUE,
-        arrowhead = 0.5,
-        ax = 20,
-        ay = -40
-      )
-    }
-    
-    # make the Plot.ly plot
-    p <- plot_ly(
-      data = subset_df,
-      x = ~log2FC,
-      y = ~-log10(pval),
-      text = ~gene_id,
-      mode = "markers",
-      type = "scatter",
-      color = ~group
-    ) %>%
-      layout(title = "Volcano Plot", annotations = a)
-    
-    # p <- plot_ly(data = subset_df, x = log2FC, y = -log10(pval), text = gene_id, mode = "markers", color = group) %>% 
-    #   layout(title ="Volcano Plot") %>%
-    #   layout(annotations = a)
+    ## check what table is created
+    print(head(entire_df))
     ggplotly(p)
   })
+  
+  
+  # ## Generate interactive volcano plot
+  # output$volcanoPlot <- renderPlotly({
+  #   # Subset the data to get just the log2FC and pvalue
+  #   entire_df <- filteredExpData()
+  #   subset_df <- entire_df[c("gene_id", "log2FC", "pval")]
+  #   
+  #   # Set significant values for log2FC and pvalue
+  #   if (!is.null(input$lFC) && !is.na(input$lFC)){
+  #     fold <- input$lFC
+  #   } else {
+  #     fold <- 1
+  #   }
+  #   if (!is.null(input$pvalue) && !is.na(input$pvalue)){
+  #     pval <- input$pvalue
+  #   } else {
+  #     pval <- 0.05
+  #   }
+  #   
+  #   # Add a grouping column, with a default value of NotSignificant
+  #   subset_df["group"] <- "NotSignificant"
+  #   
+  #   # Change the grouping for entries with significance but not enough fold change
+  #   subset_df[which(subset_df['pval'] < pval & abs(subset_df['log2FC']) < fold), "group"] <- "Significant"
+  #   # change the grouping for the entries a large enough Fold change but not a low enough p value
+  #   subset_df[which(subset_df['pval'] > pval & abs(subset_df['log2FC']) > fold), "group"] <- "FoldChange"
+  #   # change the grouping for the entries with both significance and large enough fold change
+  #   subset_df[which(subset_df['pval'] < pval & abs(subset_df['log2FC']) > fold), "group"] <- "Significant&FoldChange"
+  #   
+  #   # Find and label the top peaks..
+  #   top_peaks <- subset_df[with(subset_df, order(log2FC, pval)),][1:5,]
+  #   top_peaks <- rbind(top_peaks, subset_df[with(subset_df, order(-log2FC, pval)),][1:5,])
+  #   
+  #   # Add gene labels for all of the top genes we found
+  #   a <- list()
+  #   for (i in seq_len(nrow(top_peaks))) {
+  #     m <- top_peaks[i, ]
+  #     a[[i]] <- list(
+  #       x = m[["log2FC"]],
+  #       y = -log10(m[["pval"]]),
+  #       text = m[["gene_id"]],
+  #       xref = "x",
+  #       yref = "y",
+  #       showarrow = TRUE,
+  #       arrowhead = 0.5,
+  #       ax = 20,
+  #       ay = -40
+  #     )
+  #   }
+  #   
+  #   # make the Plot.ly plot
+  #   p <- plot_ly(
+  #     data = subset_df,
+  #     x = ~log2FC,
+  #     y = ~-log10(pval),
+  #     text = ~gene_id,
+  #     mode = "markers",
+  #     type = "scatter",
+  #     color = ~group
+  #   ) %>%
+  #     layout(title = "Volcano Plot", annotations = a)
+  #   
+  #   # p <- plot_ly(data = subset_df, x = log2FC, y = -log10(pval), text = gene_id, mode = "markers", color = group) %>% 
+  #   #   layout(title ="Volcano Plot") %>%
+  #   #   layout(annotations = a)
+  #   ggplotly(p)
+  # })
 }
