@@ -1,5 +1,10 @@
 # server.R
 server <- function(input, output, session) {
+  # Cleanly close the DB connection on ending the session
+  session$onSessionEnded(function() {
+    dbDisconnect(con)
+  })
+  
   ## Setup the initial state
   # hide all unnecessary tabs
   hideTab("navMenu", target = "Results")
@@ -267,7 +272,6 @@ server <- function(input, output, session) {
     }
     
     # Filter based on logFC
-    ### if radio button == a, then do a
     if (!is.null(input$lFC) && !is.na(input$lFC)){
       if (input$lFCRegulation == "Up- or Downregulated"){
         data <- filter(data, log2FC >= input$lFC | log2FC <= -input$lFC)
@@ -327,71 +331,122 @@ server <- function(input, output, session) {
     ggplotly(p)
   })
   
-  
-  # ## Generate interactive volcano plot
-  # output$volcanoPlot <- renderPlotly({
-  #   # Subset the data to get just the log2FC and pvalue
-  #   entire_df <- filteredExpData()
-  #   subset_df <- entire_df[c("gene_id", "log2FC", "pval")]
+  ## Generate heatmap
+  # output$allDegTable <- renderTable({
+  #   # 1. Using experiment_id, generated from selected author & year of the contras
+  #   # 1.2 Use exp_id to extract gene_contrast (from GeneContrasts)
+  #   # 1.3 Use gene_contrast to extract values (from DEG)
+  #   # 2. Link with refine side panel to filter table
+  #   # 3. Create heatmap with this data, with contrasts on the x-axis and gene expression on the y-axis
   #   
-  #   # Set significant values for log2FC and pvalue
-  #   if (!is.null(input$lFC) && !is.na(input$lFC)){
-  #     fold <- input$lFC
-  #   } else {
-  #     fold <- 1
+  #   # Execute DB search 
+  #   all_DEGs <- dbGetQuery(con, paste0(
+  #     "SELECT 
+  #       GeneContrasts.gene_id,
+  #       GeneContrasts.contrast,
+  #       DEG.log2FC,
+  #       DEG.lfcSE,
+  #       DEG.pval,
+  #       DEG.padj
+  #     FROM GeneContrasts
+  #     JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
+  #     WHERE experiment_id = '", exp_id(), "';"
+  #   ))
+  #   
+  #   # Refine output based on values in side panel
+  #   # Filter based on gene_id
+  #   if (!is.null(input$refineGene)){
+  #     all_DEGs <- filter(all_DEGs, gene_id %in% input$refineGene)
   #   }
+  #   
+  #   # Filter based on pval
   #   if (!is.null(input$pvalue) && !is.na(input$pvalue)){
-  #     pval <- input$pvalue
-  #   } else {
-  #     pval <- 0.05
+  #     all_DEGs <- filter(all_DEGs, pval < input$pvalue)
   #   }
   #   
-  #   # Add a grouping column, with a default value of NotSignificant
-  #   subset_df["group"] <- "NotSignificant"
-  #   
-  #   # Change the grouping for entries with significance but not enough fold change
-  #   subset_df[which(subset_df['pval'] < pval & abs(subset_df['log2FC']) < fold), "group"] <- "Significant"
-  #   # change the grouping for the entries a large enough Fold change but not a low enough p value
-  #   subset_df[which(subset_df['pval'] > pval & abs(subset_df['log2FC']) > fold), "group"] <- "FoldChange"
-  #   # change the grouping for the entries with both significance and large enough fold change
-  #   subset_df[which(subset_df['pval'] < pval & abs(subset_df['log2FC']) > fold), "group"] <- "Significant&FoldChange"
-  #   
-  #   # Find and label the top peaks..
-  #   top_peaks <- subset_df[with(subset_df, order(log2FC, pval)),][1:5,]
-  #   top_peaks <- rbind(top_peaks, subset_df[with(subset_df, order(-log2FC, pval)),][1:5,])
-  #   
-  #   # Add gene labels for all of the top genes we found
-  #   a <- list()
-  #   for (i in seq_len(nrow(top_peaks))) {
-  #     m <- top_peaks[i, ]
-  #     a[[i]] <- list(
-  #       x = m[["log2FC"]],
-  #       y = -log10(m[["pval"]]),
-  #       text = m[["gene_id"]],
-  #       xref = "x",
-  #       yref = "y",
-  #       showarrow = TRUE,
-  #       arrowhead = 0.5,
-  #       ax = 20,
-  #       ay = -40
-  #     )
+  #   # Filter based on padj
+  #   if (!is.null(input$padj) && !is.na(input$padj)){
+  #     all_DEGs <- filter(all_DEGs, padj < input$padj)
   #   }
   #   
-  #   # make the Plot.ly plot
-  #   p <- plot_ly(
-  #     data = subset_df,
-  #     x = ~log2FC,
-  #     y = ~-log10(pval),
-  #     text = ~gene_id,
-  #     mode = "markers",
-  #     type = "scatter",
-  #     color = ~group
-  #   ) %>%
-  #     layout(title = "Volcano Plot", annotations = a)
+  #   # Filter based on logFC
+  #   ### if radio button == a, then do a
+  #   if (!is.null(input$lFC) && !is.na(input$lFC)){
+  #     if (input$lFCRegulation == "Up- or Downregulated"){
+  #       all_DEGs <- filter(all_DEGs, log2FC >= input$lFC | log2FC <= -input$lFC)
+  #     }
+  #     if (input$lFCRegulation == "Upregulated only"){
+  #       all_DEGs <- filter(all_DEGs, log2FC >= input$lFC)
+  #     }
+  #     if (input$lFCRegulation == "Downregulated only"){
+  #       all_DEGs <- filter(all_DEGs, log2FC <= -input$lFC)
+  #     }
+  #   }
   #   
-  #   # p <- plot_ly(data = subset_df, x = log2FC, y = -log10(pval), text = gene_id, mode = "markers", color = group) %>% 
-  #   #   layout(title ="Volcano Plot") %>%
-  #   #   layout(annotations = a)
-  #   ggplotly(p)
+  #   ## Call the heatmap function to generate the heatmap on the filtered data
+  #   print(head(all_DEGs))
+  #   all_DEGs
   # })
+  
+  output$heatmap <- renderPlot({
+    # Execute DB search 
+    all_DEGs <- dbGetQuery(con, paste0(
+      "SELECT 
+        GeneContrasts.gene_id,
+        GeneContrasts.contrast,
+        DEG.log2FC,
+        DEG.lfcSE,
+        DEG.pval,
+        DEG.padj
+      FROM GeneContrasts
+      JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
+      WHERE experiment_id = '", exp_id(), "';"
+    ))
+    
+    # Refine output based on values in side panel
+    # Filter based on gene_id
+    if (!is.null(input$refineGene)){
+      all_DEGs <- filter(all_DEGs, gene_id %in% input$refineGene)
+    }
+    
+    # Filter based on pval
+    if (!is.null(input$pvalue) && !is.na(input$pvalue)){
+      all_DEGs <- filter(all_DEGs, pval < input$pvalue)
+    }
+    
+    # Filter based on padj
+    if (!is.null(input$padj) && !is.na(input$padj)){
+      all_DEGs <- filter(all_DEGs, padj < input$padj)
+    }
+    
+    # Filter based on logFC
+    ### if radio button == a, then do a
+    if (!is.null(input$lFC) && !is.na(input$lFC)){
+      if (input$lFCRegulation == "Up- or Downregulated"){
+        all_DEGs <- filter(all_DEGs, log2FC >= input$lFC | log2FC <= -input$lFC)
+      }
+      if (input$lFCRegulation == "Upregulated only"){
+        all_DEGs <- filter(all_DEGs, log2FC >= input$lFC)
+      }
+      if (input$lFCRegulation == "Downregulated only"){
+        all_DEGs <- filter(all_DEGs, log2FC <= -input$lFC)
+      }
+    }
+    
+    # reorder the contrasts so that the selected contrast is the first
+    target_contrast <- selectedContrast()
+    
+    # Get all contrast levels, and reorder to put target first
+    contrast_levels <- unique(all_DEGs$contrast)
+    ordered_levels <- c(target_contrast, setdiff(contrast_levels, target_contrast))
+    
+    # Reorder the contrast factor
+    all_DEGs$contrast <- factor(all_DEGs$contrast, levels = ordered_levels)
+    
+    # print(head(all_DEGs))
+    plot <- DEG_heatmap(all_DEGs)
+    plot
+  })
+  
+
 }

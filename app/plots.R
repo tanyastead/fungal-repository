@@ -50,3 +50,21 @@ interactive_volcano <- function(data, lFC, pv){
   
   return(plot)
 }
+
+# Gene Expression Heatmap function
+DEG_heatmap <- function(data){
+  plot <- ggplot(data, aes(x = contrast, y = gene_id, fill = log2FC)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "#00AFBB", mid = "grey", high = "#F8766D", midpoint = 0) +
+    theme_light() +
+    labs(x = "Contrast", y = "Gene ID", fill = "log2FC") +
+    theme(
+      panel.grid.major.x = element_blank(),   # ❌ Remove vertical major gridlines
+      # panel.grid.minor.x = element_blank(),   # ❌ Remove vertical minor gridlines
+      panel.grid.major.y = element_line(color = "grey80"),  # ✅ Keep horizontal gridlines
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.y = element_text(size = 6)
+    )
+  return(plot)
+}
+

@@ -1,5 +1,6 @@
 # macOS system files
 .DS_Store
+.Rhistory
 
 # data files
 database/DEG_Data/*

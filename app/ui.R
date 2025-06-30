@@ -118,27 +118,37 @@ ui <- fluidPage(
                             plotlyOutput("volcanoPlot")
                             ),
                   nav_panel("Expression Heatmap",
+                            tags$div(
+                              style = "text-align: right;",
+                              actionButton(
+                                inputId = "exportHeatmap", 
+                                label = "Export Plot", 
+                                icon = icon("download"),
+                                style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
+                              )
+                            ),
                             br(),
-                            "Placeholder for gene/function expression heatmap (maybe interactive)")
+                            plotOutput("heatmap"),
+                            tableOutput("allDegTable"))
                 ),
                 # DTOutput("experimentTable"),
                 textOutput("testMessage")
                 )
               ),
-    nav_panel(title = "Plots",
-              fluidRow(
-                column(
-                  width = 12,
-                  div(
-                    style = "background-color: #f0f0f0; padding: 10px; margin-bottom: 10px;",
-                    h4("Experiment Summary"),
-                    textOutput("plotsAuthorYear"),
-                    uiOutput("plotsDescription"),
-                    textOutput("plotsContrast")
-                  )
-                )
-              ),
-              # plotlyOutput("volcanoPlot")
-              ),
+    # nav_panel(title = "Plots",
+    #           fluidRow(
+    #             column(
+    #               width = 12,
+    #               div(
+    #                 style = "background-color: #f0f0f0; padding: 10px; margin-bottom: 10px;",
+    #                 h4("Experiment Summary"),
+    #                 textOutput("plotsAuthorYear"),
+    #                 uiOutput("plotsDescription"),
+    #                 textOutput("plotsContrast")
+    #               )
+    #             )
+    #           ),
+    #           # plotlyOutput("volcanoPlot")
+    #           ),
     )
 )
