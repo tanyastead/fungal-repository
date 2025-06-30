@@ -255,6 +255,11 @@ server <- function(input, output, session) {
   filteredExpData <- reactive({
     req(experimentData())
     data <- experimentData()
+    
+    # remove NA values
+    # df_clean <- df[!is.na(df$pval), ]
+    # data <- filter(data, !is.na(pval))
+    # data$pval <- as.numeric(data$pval)
 
     # Filter based on gene_id
     if (!is.null(input$refineGene)){
@@ -402,6 +407,9 @@ server <- function(input, output, session) {
       JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
       WHERE experiment_id = '", exp_id(), "';"
     ))
+    
+    # Remove NA values
+    all_DEGs <- na.omit(all_DEGs)
     
     # Refine output based on values in side panel
     # Filter based on gene_id

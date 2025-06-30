@@ -30,7 +30,7 @@ interactive_volcano <- function(data, lFC, pv){
   plot <- ggplot(data = subset_df, aes(x = log2FC, y = neg_log10_pval, col = diffexpressed, text = paste("Gene:", gene_id) )) +
     geom_vline(xintercept = c(-lFC, lFC), col = "gray", linetype = 'dashed') + # Set intercept lines
     geom_hline(yintercept = -log10(pv), col = "gray", linetype = 'dashed') +
-    geom_point(size = 2) +
+    geom_point(size = 1) +
     scale_color_manual(
       values = c("DOWN" = "#00AFBB", "NO" = "grey", "UP" = "#F8766D"),
       labels = c("DOWN" = "Downregulated", "NO" = "Not significant", "UP" = "Upregulated")
@@ -44,9 +44,9 @@ interactive_volcano <- function(data, lFC, pv){
          x = "log2 Fold Change", y = "-log10 p-value") + 
     scale_x_continuous(breaks = seq(-10, 10, 2)) # to customise the breaks in the x axis
   
-  print(subset_df)
-  print(max(-log10(subset_df$pval)))
-  print(min(-log10(subset_df$pval)))
+  # print(subset_df)
+  # print(max(-log10(subset_df$pval)))
+  # print(min(-log10(subset_df$pval)))
   
   return(plot)
 }
