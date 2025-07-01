@@ -94,11 +94,12 @@ ui <- fluidPage(
                             # actionButton("exportExpTable", "Export Table", icon = icon("download"))
                             tags$div(
                               style = "text-align: right;",
-                              actionButton(
-                                inputId = "exportExpTable", 
+                              downloadButton(
+                                outputId = "exportExpTable", 
                                 label = "Export Table", 
-                                icon = icon("download"),
-                                style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
+                                # class = "btn-primary"
+                                # icon = icon("download"),
+                                # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
                               )
                             ),
                             br(),
@@ -107,11 +108,11 @@ ui <- fluidPage(
                             # actionButton("exportVolcano", "Export Plot", icon = icon("download")),
                             tags$div(
                               style = "text-align: right;",
-                              actionButton(
-                                inputId = "exportVolcano", 
+                              downloadButton(
+                                outputId = "exportVolcano", 
                                 label = "Export Plot", 
-                                icon = icon("download"),
-                                style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
+                                # icon = icon("download"),
+                                # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
                               )
                             ),
                             br(),
@@ -120,11 +121,11 @@ ui <- fluidPage(
                   nav_panel("Expression Heatmap",
                             tags$div(
                               style = "text-align: right;",
-                              actionButton(
-                                inputId = "exportHeatmap", 
+                              downloadButton(
+                                outputId = "exportHeatmap", 
                                 label = "Export Plot", 
-                                icon = icon("download"),
-                                style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
+                                # icon = icon("download"),
+                                # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
                               )
                             ),
                             br(),

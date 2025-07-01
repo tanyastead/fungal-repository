@@ -9,7 +9,6 @@ server <- function(input, output, session) {
   # hide all unnecessary tabs
   hideTab("navMenu", target = "Results")
   hideTab("navMenu", target = "Experiments")
-  hideTab("navMenu", target = "Plots")
   
   queryData <- reactiveVal() # Define a reactive contained to hold the table data
   colnames <- reactiveVal() # define an empty variable to hold column names
@@ -19,6 +18,8 @@ server <- function(input, output, session) {
   exp_id <- reactiveVal()
   selectedDescription <- reactiveVal()
   experimentData <- reactiveVal()
+  heatmap <- reactiveVal()
+  volcano <- reactiveVal()
   
   # refSpec <- reactiveVal()
   
@@ -213,7 +214,6 @@ server <- function(input, output, session) {
     # Navigate to the experiments tab
     updateTabsetPanel(session, "navMenu", selected = "Experiments")
     showTab("navMenu", target = "Experiments")
-    showTab("navMenu", target = "Plots")
     
     # Identify possible genes and relevant values based on selected contrast
     geneValues <- dbGetQuery(con, paste0(
@@ -243,11 +243,11 @@ server <- function(input, output, session) {
       })
     output$experimentContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
     
-    output$plotsAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
-    output$plotsDescription <- renderUI({
-      HTML(paste0("<em>", selectedDescription(), "</em>"))
-    })
-    output$plotsContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
+    # output$plotsAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
+    # output$plotsDescription <- renderUI({
+    #   HTML(paste0("<em>", selectedDescription(), "</em>"))
+    # })
+    # output$plotsContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
     
     # Refine side panel
     updateSelectizeInput(session,
@@ -308,6 +308,20 @@ server <- function(input, output, session) {
               escape = FALSE)
   })
   
+  ## Download button downloads table
+  output$exportExpTable <- downloadHandler(
+    filename = function() {
+      paste0(selectedContrast(), "_", 
+             selectedAuthor(), "_", 
+             selectedYear(), "_", 
+             format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), 
+             ".csv")
+    },
+    content = function(file) {
+      write.csv(filteredExpData(), file, row.names = FALSE)
+    }
+  )
+  
   ## Clear button resets side panel values
   observeEvent(input$clearExperiments, {
     updateSelectizeInput(session, "refineGene", selected = character(0))
@@ -321,6 +335,8 @@ server <- function(input, output, session) {
   output$volcanoPlot <- renderPlotly({
     entire_df <- filteredExpData()
     # remove empty pval 
+    # entire_df <- entire_df %>% filter(!is.na(pval))
+    entire_df <- filter(entire_df, !is.na(pval))
       
     # Set significant values for log2FC and pvalue
     if (!is.null(input$lFC) && !is.na(input$lFC)){
@@ -337,10 +353,43 @@ server <- function(input, output, session) {
     # create ggplot volcano plot
     p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval)
     
-    ## check what table is created
-    # print(head(entire_df))
-    ggplotly(p)
+    # Number of desired breaks
+    num_breaks <- 7
+    
+    # Calculate breaks dynamically
+    breaks_dynamic <- seq(
+      from = floor(min(entire_df$log2FC)),
+      to = ceiling(max(entire_df$log2FC)),
+      length.out = num_breaks
+    )
+    p <- p + scale_x_continuous(breaks = breaks_dynamic)
+    # save plot so it can be downloaded
+    volcano(p)
+    
+    # display interactive plot
+    ggplotly(p, tooltip = "text")
   })
+  
+  ## Download button downloads volcano plot
+  output$exportVolcano <- downloadHandler(
+    filename = function() {
+      paste0(selectedContrast(), "_", 
+             selectedAuthor(), "_", 
+             selectedYear(), "_", 
+             format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), 
+             ".png")
+    },
+    content = function(file) {
+      ggsave(
+        filename = file,
+        plot = volcano(), 
+        device = "png",
+        width = 8,
+        height = 6,
+        dpi = 300
+      )
+    }
+  )
   
   
   output$heatmap <- renderPlot({
@@ -358,7 +407,7 @@ server <- function(input, output, session) {
       WHERE experiment_id = '", exp_id(), "';"
     ))
     
-    ### chat gpt --------
+
     # First, filter by contrast-specific criteria
     filtered_genes <- all_DEGs %>%
       filter(contrast == selectedContrast())
@@ -391,37 +440,7 @@ server <- function(input, output, session) {
     # Subset the full all_DEGs to include *all* contrasts for those genes
     plot_data <- all_DEGs %>% filter(gene_id %in% selected_genes)
     
-    ### chat gpt ------
-    
-    # # Refine output based on values in side panel
-    # # Filter based on gene_id
-    # if (!is.null(input$refineGene)){
-    #   all_DEGs <- filter(all_DEGs, gene_id %in% input$refineGene)
-    # }
-    # 
-    # # Filter based on pval
-    # if (!is.null(input$pvalue) && !is.na(input$pvalue)){
-    #   all_DEGs <- filter(all_DEGs, pval < input$pvalue)
-    # }
-    # 
-    # # Filter based on padj
-    # if (!is.null(input$padj) && !is.na(input$padj)){
-    #   all_DEGs <- filter(all_DEGs, padj < input$padj)
-    # }
-    # 
-    # # Filter based on logFC
-    # ### if radio button == a, then do a
-    # if (!is.null(input$lFC) && !is.na(input$lFC)){
-    #   if (input$lFCRegulation == "Up- or Downregulated"){
-    #     all_DEGs <- filter(all_DEGs, log2FC >= input$lFC | log2FC <= -input$lFC)
-    #   }
-    #   if (input$lFCRegulation == "Upregulated only"){
-    #     all_DEGs <- filter(all_DEGs, log2FC >= input$lFC)
-    #   }
-    #   if (input$lFCRegulation == "Downregulated only"){
-    #     all_DEGs <- filter(all_DEGs, log2FC <= -input$lFC)
-    #   }
-    # }
+
     
     # reorder the contrasts so that the selected contrast is the first
     target_contrast <- selectedContrast()
@@ -437,21 +456,35 @@ server <- function(input, output, session) {
     # count how many contrasts are being shows
     
     
-    # print(all_DEGs)
-    # print("nrow DEGS")
-    # print(nrow(all_DEGs))
-    # print("str")
-    # print(str(all_DEGs))
-    # print("head")
-    # print(head(all_DEGs))
-    
     # generate heatmap only if <20 genes are selected
     if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
       plot <- DEG_heatmap(plot_data)
+      heatmap(plot)
       plot
     }
 
   })
+  
+  ## Download button downloads heatmap
+  output$exportHeatmap <- downloadHandler(
+    filename = function() {
+      paste0(selectedContrast(), "_", 
+             selectedAuthor(), "_", 
+             selectedYear(), "_", 
+             format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), 
+             ".png")
+    },
+    content = function(file) {
+      ggsave(
+        filename = file,
+        plot = heatmap(), 
+        device = "png",
+        width = 8,
+        height = 6,
+        dpi = 300
+      )
+    }
+  )
   
 
 }
