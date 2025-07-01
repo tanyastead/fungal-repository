@@ -128,8 +128,7 @@ ui <- fluidPage(
                               )
                             ),
                             br(),
-                            plotOutput("heatmap"),
-                            tableOutput("allDegTable"))
+                            plotOutput("heatmap"))
                 ),
                 # DTOutput("experimentTable"),
                 textOutput("testMessage")

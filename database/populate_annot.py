@@ -56,7 +56,6 @@ with open(args.annotation_file, mode='r', encoding='utf-8') as file, \
     for row in reader:
         try:
             if row[0] not in geneID:
-                cursor.execute(f'INSERT INTO GeneFunctions VALUES ("{row[0]}", "{row[2]}");')
                 cursor.execute(
                     'INSERT INTO GeneFunctions (gene_id, gene_function) VALUES (?, ?)',
                     (row[0], row[2])

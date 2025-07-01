@@ -114,6 +114,12 @@ def insert_gene_contrasts_DEG(db_cursor, gene_id, contrast, lFC, lfcSE, pval, pa
         (gene_contrast, lFC, lfcSE, pval, padj)
     )
 
+# Safely insert float values or none when an NA value is encountered
+def safe_float(value):
+    try:
+        return float(value)
+    except:
+        return None
 
 with open(args.genes_file, mode='r', encoding='utf-8') as file, \
     sqlite3.connect(args.database) as db_connection:
@@ -197,7 +203,14 @@ with open(args.genes_file, mode='r', encoding='utf-8') as file, \
                         insert_species(cursor, row[0])
                         gene_contrast = row[0] + "_" + contrast
                         if gene_contrast not in stored_gene_contrasts:
-                            insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10], exp_id)
+                            insert_gene_contrasts_DEG(cursor, 
+                                                      row[0], 
+                                                      contrast, 
+                                                      safe_float(row[6]), 
+                                                      safe_float(row[7]),
+                                                      safe_float(row[9]), 
+                                                      safe_float(row[10]), 
+                                                      exp_id)
                     except Exception as e:
                         exit(f'Error: could not enter gene expression data: {e}')
 

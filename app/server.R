@@ -224,6 +224,11 @@ server <- function(input, output, session) {
       WHERE contrast = '", selectedContrast(), "' and experiment_id = '",exp_id(),"';"
     ))
     
+    # geneValues$pval <- as.numeric(geneValues$pval)
+    # geneValues <- geneValues[!is.na(geneValues$pval), ]
+    # print(unique(geneValues$pval[is.na(as.numeric(geneValues$pval)) & !is.na(geneValues$pval)]))
+    # 
+    # 
     experimentData(geneValues)
     
     # Output the table
@@ -257,7 +262,7 @@ server <- function(input, output, session) {
     data <- experimentData()
     
     # remove NA values
-    # df_clean <- df[!is.na(df$pval), ]
+    # data <- df[!is.na(df$pval), ]
     # data <- filter(data, !is.na(pval))
     # data$pval <- as.numeric(data$pval)
 
@@ -315,6 +320,7 @@ server <- function(input, output, session) {
   ## Generate interactive volcano plot
   output$volcanoPlot <- renderPlotly({
     entire_df <- filteredExpData()
+    # remove empty pval 
       
     # Set significant values for log2FC and pvalue
     if (!is.null(input$lFC) && !is.na(input$lFC)){
@@ -332,66 +338,10 @@ server <- function(input, output, session) {
     p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval)
     
     ## check what table is created
-    print(head(entire_df))
+    # print(head(entire_df))
     ggplotly(p)
   })
   
-  ## Generate heatmap
-  # output$allDegTable <- renderTable({
-  #   # 1. Using experiment_id, generated from selected author & year of the contras
-  #   # 1.2 Use exp_id to extract gene_contrast (from GeneContrasts)
-  #   # 1.3 Use gene_contrast to extract values (from DEG)
-  #   # 2. Link with refine side panel to filter table
-  #   # 3. Create heatmap with this data, with contrasts on the x-axis and gene expression on the y-axis
-  #   
-  #   # Execute DB search 
-  #   all_DEGs <- dbGetQuery(con, paste0(
-  #     "SELECT 
-  #       GeneContrasts.gene_id,
-  #       GeneContrasts.contrast,
-  #       DEG.log2FC,
-  #       DEG.lfcSE,
-  #       DEG.pval,
-  #       DEG.padj
-  #     FROM GeneContrasts
-  #     JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
-  #     WHERE experiment_id = '", exp_id(), "';"
-  #   ))
-  #   
-  #   # Refine output based on values in side panel
-  #   # Filter based on gene_id
-  #   if (!is.null(input$refineGene)){
-  #     all_DEGs <- filter(all_DEGs, gene_id %in% input$refineGene)
-  #   }
-  #   
-  #   # Filter based on pval
-  #   if (!is.null(input$pvalue) && !is.na(input$pvalue)){
-  #     all_DEGs <- filter(all_DEGs, pval < input$pvalue)
-  #   }
-  #   
-  #   # Filter based on padj
-  #   if (!is.null(input$padj) && !is.na(input$padj)){
-  #     all_DEGs <- filter(all_DEGs, padj < input$padj)
-  #   }
-  #   
-  #   # Filter based on logFC
-  #   ### if radio button == a, then do a
-  #   if (!is.null(input$lFC) && !is.na(input$lFC)){
-  #     if (input$lFCRegulation == "Up- or Downregulated"){
-  #       all_DEGs <- filter(all_DEGs, log2FC >= input$lFC | log2FC <= -input$lFC)
-  #     }
-  #     if (input$lFCRegulation == "Upregulated only"){
-  #       all_DEGs <- filter(all_DEGs, log2FC >= input$lFC)
-  #     }
-  #     if (input$lFCRegulation == "Downregulated only"){
-  #       all_DEGs <- filter(all_DEGs, log2FC <= -input$lFC)
-  #     }
-  #   }
-  #   
-  #   ## Call the heatmap function to generate the heatmap on the filtered data
-  #   print(head(all_DEGs))
-  #   all_DEGs
-  # })
   
   output$heatmap <- renderPlot({
     # Execute DB search 
@@ -408,38 +358,70 @@ server <- function(input, output, session) {
       WHERE experiment_id = '", exp_id(), "';"
     ))
     
-    # Remove NA values
-    all_DEGs <- na.omit(all_DEGs)
+    ### chat gpt --------
+    # First, filter by contrast-specific criteria
+    filtered_genes <- all_DEGs %>%
+      filter(contrast == selectedContrast())
     
-    # Refine output based on values in side panel
-    # Filter based on gene_id
+    # Apply the filters on pval, padj, log2FC, etc.
     if (!is.null(input$refineGene)){
-      all_DEGs <- filter(all_DEGs, gene_id %in% input$refineGene)
-    }
-    
-    # Filter based on pval
+      filtered_genes <- filter(filtered_genes, gene_id %in% input$refineGene)
+      }
     if (!is.null(input$pvalue) && !is.na(input$pvalue)){
-      all_DEGs <- filter(all_DEGs, pval < input$pvalue)
+      filtered_genes <- filter(filtered_genes, pval < input$pvalue)
     }
-    
-    # Filter based on padj
     if (!is.null(input$padj) && !is.na(input$padj)){
-      all_DEGs <- filter(all_DEGs, padj < input$padj)
+      filtered_genes <- filter(filtered_genes, padj < input$padj)
     }
-    
-    # Filter based on logFC
-    ### if radio button == a, then do a
     if (!is.null(input$lFC) && !is.na(input$lFC)){
       if (input$lFCRegulation == "Up- or Downregulated"){
-        all_DEGs <- filter(all_DEGs, log2FC >= input$lFC | log2FC <= -input$lFC)
+        filtered_genes <- filter(filtered_genes, log2FC >= input$lFC | log2FC <= -input$lFC)
       }
       if (input$lFCRegulation == "Upregulated only"){
-        all_DEGs <- filter(all_DEGs, log2FC >= input$lFC)
+        filtered_genes <- filter(filtered_genes, log2FC >= input$lFC)
       }
       if (input$lFCRegulation == "Downregulated only"){
-        all_DEGs <- filter(all_DEGs, log2FC <= -input$lFC)
+        filtered_genes <- filter(filtered_genes, log2FC <= -input$lFC)
       }
     }
+    
+    # Now extract the gene IDs that passed contrast-specific filtering
+    selected_genes <- unique(filtered_genes$gene_id)
+    
+    # Subset the full all_DEGs to include *all* contrasts for those genes
+    plot_data <- all_DEGs %>% filter(gene_id %in% selected_genes)
+    
+    ### chat gpt ------
+    
+    # # Refine output based on values in side panel
+    # # Filter based on gene_id
+    # if (!is.null(input$refineGene)){
+    #   all_DEGs <- filter(all_DEGs, gene_id %in% input$refineGene)
+    # }
+    # 
+    # # Filter based on pval
+    # if (!is.null(input$pvalue) && !is.na(input$pvalue)){
+    #   all_DEGs <- filter(all_DEGs, pval < input$pvalue)
+    # }
+    # 
+    # # Filter based on padj
+    # if (!is.null(input$padj) && !is.na(input$padj)){
+    #   all_DEGs <- filter(all_DEGs, padj < input$padj)
+    # }
+    # 
+    # # Filter based on logFC
+    # ### if radio button == a, then do a
+    # if (!is.null(input$lFC) && !is.na(input$lFC)){
+    #   if (input$lFCRegulation == "Up- or Downregulated"){
+    #     all_DEGs <- filter(all_DEGs, log2FC >= input$lFC | log2FC <= -input$lFC)
+    #   }
+    #   if (input$lFCRegulation == "Upregulated only"){
+    #     all_DEGs <- filter(all_DEGs, log2FC >= input$lFC)
+    #   }
+    #   if (input$lFCRegulation == "Downregulated only"){
+    #     all_DEGs <- filter(all_DEGs, log2FC <= -input$lFC)
+    #   }
+    # }
     
     # reorder the contrasts so that the selected contrast is the first
     target_contrast <- selectedContrast()
@@ -451,9 +433,24 @@ server <- function(input, output, session) {
     # Reorder the contrast factor
     all_DEGs$contrast <- factor(all_DEGs$contrast, levels = ordered_levels)
     
+    plot_data$contrast <- factor(plot_data$contrast, levels = ordered_levels)
+    # count how many contrasts are being shows
+    
+    
+    # print(all_DEGs)
+    # print("nrow DEGS")
+    # print(nrow(all_DEGs))
+    # print("str")
+    # print(str(all_DEGs))
+    # print("head")
     # print(head(all_DEGs))
-    plot <- DEG_heatmap(all_DEGs)
-    plot
+    
+    # generate heatmap only if <20 genes are selected
+    if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
+      plot <- DEG_heatmap(plot_data)
+      plot
+    }
+
   })
   
 
