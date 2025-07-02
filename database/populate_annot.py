@@ -57,8 +57,8 @@ with open(args.annotation_file, mode='r', encoding='utf-8') as file, \
         try:
             if row[0] not in geneID:
                 cursor.execute(
-                    'INSERT INTO GeneFunctions (gene_id, gene_function) VALUES (?, ?)',
-                    (row[0], row[2])
+                    'INSERT INTO GeneFunctions (gene_id, go_term, gene_function) VALUES (?, ?, ?)',
+                    (row[0], row[1],row[2])
                 )
                 cursor.execute(
                     'INSERT INTO GeneFunctions_FTS (gene_id, gene_function) VALUES (?, ?)',

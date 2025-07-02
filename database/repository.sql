@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS Genes (
 /* Create the GeneFunctions table */
 CREATE TABLE IF NOT EXISTS GeneFunctions (
     gene_id TEXT,
+    go_term TEXT,
     gene_function TEXT,
     PRIMARY KEY (gene_id),
     FOREIGN KEY (gene_id) REFERENCES Genes (gene_id)
