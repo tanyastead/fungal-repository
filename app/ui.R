@@ -4,12 +4,43 @@ ui <- fluidPage(
   navset_tab(id = "navMenu",
     nav_panel(title = "Search",
               #TODO: move the search section to the middle of the page!
-              br(), 
-              fluidRow(
-                  column(4, textInput("query", NULL, placeholder = "Enter search text...")),
-                  column(4, selectInput("term", NULL, choices = c("Gene ID","Gene Function", "Keyword"))),
-                  column(4, actionButton("search", "Search"))
-                  )),
+              br(), br(),
+              # fluidRow(
+              #     column(4, textInput("query", NULL, placeholder = "Enter search text...")),
+              #     column(4, selectInput("term", NULL, choices = c("Gene ID","Gene Function", "Keyword"))),
+              #     column(4, actionButton("search", "Search"))
+              #     )
+              fluidRow(column(8, offset = 2,
+                              
+                        
+                                  
+                                  # Horizontal alignment using flexbox
+                                  div(style = "display: flex; justify-content: space-between; align-items: center;",
+                                      
+                                      # Text Input
+                                      div(style = "flex: 1; padding-right: 10px;margin-top: 15px;",
+                                          textInput("query", NULL, placeholder = "Enter search text...", width = "100%")
+                                      ),
+                                      
+                                      # Select Input
+                                      div(style = "flex: 1; padding: 0 10px;margin-top: 15px;",
+                                          selectInput("term", NULL,
+                                                      choices = c("Gene ID", "Gene Function", "Keyword"),
+                                                      width = "100%")
+                                      ),
+                                      
+                                      # Search Button aligned using margin-top
+                                      div(style = "flex: 1; padding-left: 10px;",
+                                          div(style = "display: flex; align-items: center; height: 100%;",
+                                              actionButton("search", "Search", 
+                                                           
+                                                           style = "width: 100%; margin-top: 0; line-height: 1.8;height: 38px;")
+                                          )
+                                      )
+                                  )
+                              
+              ))
+              ),
     nav_panel(title = "Results", 
               p("Second tab content."),
               sidebarPanel(
