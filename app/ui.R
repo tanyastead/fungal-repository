@@ -31,7 +31,7 @@ ui <- fluidPage(
                 textInput("toYear", NULL, placeholder = "Year..."),
                 br(),
                 actionButton("clearResults", "Clear"),
-                actionButton("exportResults", "Export Table", icon = icon("download"))
+                downloadButton(outputId = "exportResults", label = "Export Table")
                 
               ),
               mainPanel(

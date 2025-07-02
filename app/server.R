@@ -129,14 +129,6 @@ server <- function(input, output, session) {
       
     } else if (input$term == "Keyword") {
       req(input$query)
-      # Query the DB
-      # tableQuery <- dbGetQuery(con, paste0("SELECT Experiments.species, ExpKeywords.keyword, ExpContrasts.contrast, Experiments.author, 
-      #     Experiments.year, Experiments.description
-      #     FROM ExpKeywords
-      #     JOIN Experiments ON ExpKeywords.experiment_id = Experiments.experiment_id
-      #     JOIN ExpContrasts ON ExpKeywords.experiment_id = ExpContrasts.experiment_id
-      # 
-      #     WHERE ExpKeywords.keyword = '", input$query, "';"))
       tableQuery <- dbGetQuery(con, paste0(
         "SELECT 
             Experiments.species, 
@@ -222,7 +214,7 @@ server <- function(input, output, session) {
       output$speciesMessage <- renderText(paste0("species has been redifned to: ", (input$refineCondition)))
       
     }
-    output$troubleshootingCondition <- renderPrint(data$keywords)
+    # output$troubleshootingCondition <- renderPrint(data$keywords)
     return(data)
   })
   
@@ -245,6 +237,19 @@ server <- function(input, output, session) {
     updateTextInput(session, "fromYear", value = "")
     updateTextInput(session, "toYear", value = "")
   })
+  
+  ## Export button downloads table
+  output$exportResults <- downloadHandler(
+    filename = function() {
+      paste0(input$query, "_", 
+             format(Sys.time(), "%Y-%m-%d_%H-%M-%S"),
+             ".csv")
+    },
+    content = function(file) {
+      write.csv(filteredData(), file, row.names = FALSE)
+    }
+  )
+  
   
   ## EXPERIMENTS TAB
   ## Navigate to the experiments tab when a contrast is clicked
@@ -476,7 +481,6 @@ server <- function(input, output, session) {
     plot_data <- all_DEGs %>% filter(gene_id %in% selected_genes)
     
 
-    
     # reorder the contrasts so that the selected contrast is the first
     target_contrast <- selectedContrast()
     
@@ -488,8 +492,6 @@ server <- function(input, output, session) {
     all_DEGs$contrast <- factor(all_DEGs$contrast, levels = ordered_levels)
     
     plot_data$contrast <- factor(plot_data$contrast, levels = ordered_levels)
-    # count how many contrasts are being shows
-    
     
     # generate heatmap only if <20 genes are selected
     if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
