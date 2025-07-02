@@ -60,6 +60,10 @@ with open(args.annotation_file, mode='r', encoding='utf-8') as file, \
                     'INSERT INTO GeneFunctions (gene_id, gene_function) VALUES (?, ?)',
                     (row[0], row[2])
                 )
+                cursor.execute(
+                    'INSERT INTO GeneFunctions_FTS (gene_id, gene_function) VALUES (?, ?)',
+                    (row[0], row[2])
+                )
                 geneID.add(row[0])
         except Exception as e:
             exit(f'Error inserting row {row}: {e}')

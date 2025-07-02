@@ -7,7 +7,7 @@ ui <- fluidPage(
               br(), 
               fluidRow(
                   column(4, textInput("query", NULL, placeholder = "Enter search text...")),
-                  column(4, selectInput("term", NULL, choices = c("Gene (Name or Function)", "Keyword"))),
+                  column(4, selectInput("term", NULL, choices = c("Gene ID","Gene Function", "Keyword"))),
                   column(4, actionButton("search", "Search"))
                   )),
     nav_panel(title = "Results", 

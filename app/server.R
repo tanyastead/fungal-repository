@@ -40,7 +40,7 @@ server <- function(input, output, session) {
     updateNumericInput(session, "lFC", value = NA)
     updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
     
-    if (input$term == "Gene (Name or Function)") {
+    if (input$term == "Gene ID") {
       req(input$query)
       # Query the DB
       tableQuery <- dbGetQuery(con, paste0("SELECT Genes.species, ExpKeywords.keyword, Genes.gene_id, GeneFunctions.gene_function, 
@@ -52,6 +52,50 @@ server <- function(input, output, session) {
           JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
           WHERE Genes.gene_id = '", input$query, "' COLLATE NOCASE;"))
       
+      # Set the contrast column as clickable links, and combine contrasts into a single cell
+      processedTable <- tableQuery %>%
+        # mutate contrasts as hyperlinks set to open new tabs. 
+        mutate(hyperlink = paste0('<a href="#" onclick="Shiny.setInputValue(\'goToTab\', {',
+                                  'contrast: \'', contrast, '\', ',
+                                  'author: \'', author, '\', ',
+                                  'year: ', year, ', ',
+                                  'description: \'', description, '\', ',
+                                  'priority: \'event\'',
+                                  '})">',
+                                  contrast,
+                                  '</a>')) %>% # priority event forces the hyperlink to work every time it is clicked
+        # groups table where ALL listed values are identical
+        group_by(species, gene_id, gene_function, author, year, description) %>% 
+        # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
+        summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"),
+                  keywords = paste(unique(keyword), collapse = "; "),
+                  .groups = 'drop') %>%
+        # sort the order of the columns
+        select(species, keywords, gene_id, gene_function, contrasts, author, year, description)
+      
+      # Save the processedTable outside the observeEvent
+      queryData(processedTable)
+      
+      # Save specific column names outside the observeEvent
+      colnames(c("Species","Keywords","Gene", "Functional Annotation", "Contrasts", "Author", "Year", "Description"))
+      
+      # Switch view to the Results tab
+      showTab("navMenu", target = "Results")
+      updateTabsetPanel(session, "navMenu", selected = "Results")
+      
+    } else if (input$term == "Gene Function"){
+      req(input$query)
+      # Query the DB 
+      tableQuery <- dbGetQuery(con, paste0("
+            SELECT Genes.species, ExpKeywords.keyword, GeneFunctions_FTS.gene_id, GeneFunctions_FTS.gene_function, 
+            GeneContrasts.contrast, Experiments.author,Experiments.year,Experiments.description
+            FROM GeneFunctions_FTS
+            JOIN Genes ON GeneFunctions_FTS.gene_id = Genes.gene_id
+            JOIN GeneContrasts ON GeneFunctions_FTS.gene_id = GeneContrasts.gene_id
+            JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
+            JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
+            WHERE GeneFunctions_FTS.gene_function MATCH '",input$query,"';
+            "))
       # Set the contrast column as clickable links, and combine contrasts into a single cell
       processedTable <- tableQuery %>%
         # mutate contrasts as hyperlinks set to open new tabs. 
