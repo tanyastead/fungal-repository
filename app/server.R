@@ -50,7 +50,7 @@ server <- function(input, output, session) {
           LEFT JOIN GeneFunctions ON Genes.gene_id = GeneFunctions.gene_id 
           JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
           JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
-          WHERE Genes.gene_id = '", input$query, "';"))
+          WHERE Genes.gene_id = '", input$query, "' COLLATE NOCASE;"))
       
       # Set the contrast column as clickable links, and combine contrasts into a single cell
       processedTable <- tableQuery %>%
@@ -108,6 +108,7 @@ server <- function(input, output, session) {
                 SELECT experiment_id 
                 FROM ExpKeywords 
                 WHERE keyword = '",input$query,"'
+                COLLATE NOCASE
                 );"
       ))
       
@@ -353,16 +354,6 @@ server <- function(input, output, session) {
     # create ggplot volcano plot
     p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval)
     
-    # Number of desired breaks
-    num_breaks <- 7
-    
-    # Calculate breaks dynamically
-    breaks_dynamic <- seq(
-      from = floor(min(entire_df$log2FC)),
-      to = ceiling(max(entire_df$log2FC)),
-      length.out = num_breaks
-    )
-    p <- p + scale_x_continuous(breaks = breaks_dynamic)
     # save plot so it can be downloaded
     volcano(p)
     

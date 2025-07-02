@@ -48,8 +48,9 @@ interactive_volcano <- function(data, lFC, pv){
       xlim = c(floor(min(subset_df$log2FC)), ceiling(max(subset_df$log2FC)))
     ) + # since some genes can have minuslog10padj of inf, we set these limits
     labs(color = 'Expression', #legend_title, 
-         x = "log2 Fold Change", y = "-log10 p-value") 
-    # scale_x_continuous(breaks = seq(floor(min(subset_df$log2FC)), ceiling(max(subset_df$log2FC)), 2)) # to customise the breaks in the x axis
+         x = "log2 Fold Change", y = "-log10 p-value") +
+    theme(axis.text.x = element_text(size = 8)) +
+    scale_x_continuous(breaks = seq(floor(min(subset_df$log2FC)), ceiling(max(subset_df$log2FC)), 2)) # to customise the breaks in the x axis
   
   # print(subset_df)
   # print(max(-log10(subset_df$pval)))
