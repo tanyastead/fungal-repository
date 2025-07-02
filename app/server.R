@@ -1,10 +1,14 @@
 # server.R
 server <- function(input, output, session) {
+  # Cleanly close the DB connection on ending the session
+  session$onSessionEnded(function() {
+    dbDisconnect(con)
+  })
+  
   ## Setup the initial state
   # hide all unnecessary tabs
   hideTab("navMenu", target = "Results")
   hideTab("navMenu", target = "Experiments")
-  hideTab("navMenu", target = "Plots")
   
   queryData <- reactiveVal() # Define a reactive contained to hold the table data
   colnames <- reactiveVal() # define an empty variable to hold column names
@@ -14,6 +18,8 @@ server <- function(input, output, session) {
   exp_id <- reactiveVal()
   selectedDescription <- reactiveVal()
   experimentData <- reactiveVal()
+  heatmap <- reactiveVal()
+  volcano <- reactiveVal()
   
   # refSpec <- reactiveVal()
   
@@ -44,7 +50,7 @@ server <- function(input, output, session) {
           LEFT JOIN GeneFunctions ON Genes.gene_id = GeneFunctions.gene_id 
           JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
           JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
-          WHERE Genes.gene_id = '", input$query, "';"))
+          WHERE Genes.gene_id = '", input$query, "' COLLATE NOCASE;"))
       
       # Set the contrast column as clickable links, and combine contrasts into a single cell
       processedTable <- tableQuery %>%
@@ -80,13 +86,31 @@ server <- function(input, output, session) {
     } else if (input$term == "Keyword") {
       req(input$query)
       # Query the DB
-      tableQuery <- dbGetQuery(con, paste0("SELECT Experiments.species, ExpKeywords.keyword, ExpContrasts.contrast, Experiments.author, 
-          Experiments.year, Experiments.description
-          FROM ExpKeywords
-          JOIN Experiments ON ExpKeywords.experiment_id = Experiments.experiment_id
-          JOIN ExpContrasts ON ExpKeywords.experiment_id = ExpContrasts.experiment_id
-          JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
-          WHERE ExpKeywords.keyword = '", input$query, "';"))
+      # tableQuery <- dbGetQuery(con, paste0("SELECT Experiments.species, ExpKeywords.keyword, ExpContrasts.contrast, Experiments.author, 
+      #     Experiments.year, Experiments.description
+      #     FROM ExpKeywords
+      #     JOIN Experiments ON ExpKeywords.experiment_id = Experiments.experiment_id
+      #     JOIN ExpContrasts ON ExpKeywords.experiment_id = ExpContrasts.experiment_id
+      # 
+      #     WHERE ExpKeywords.keyword = '", input$query, "';"))
+      tableQuery <- dbGetQuery(con, paste0(
+        "SELECT 
+            Experiments.species, 
+            AllKeywords.keyword, 
+            ExpContrasts.contrast, 
+            Experiments.author, 
+            Experiments.year, 
+            Experiments.description
+        FROM Experiments
+        JOIN ExpContrasts ON Experiments.experiment_id = ExpContrasts.experiment_id
+        JOIN ExpKeywords AS AllKeywords ON Experiments.experiment_id = AllKeywords.experiment_id
+        WHERE Experiments.experiment_id IN (
+                SELECT experiment_id 
+                FROM ExpKeywords 
+                WHERE keyword = '",input$query,"'
+                COLLATE NOCASE
+                );"
+      ))
       
       # Set the contrast column as clickable links, and combine contrasts into a single cell
       processedTable <- tableQuery %>%
@@ -152,8 +176,9 @@ server <- function(input, output, session) {
       data <- data %>%
         filter(str_detect(keywords, regex(keyword_pattern, ignore_case = TRUE)))
       output$speciesMessage <- renderText(paste0("species has been redifned to: ", (input$refineCondition)))
+      
     }
-    
+    output$troubleshootingCondition <- renderPrint(data$keywords)
     return(data)
   })
   
@@ -190,7 +215,6 @@ server <- function(input, output, session) {
     # Navigate to the experiments tab
     updateTabsetPanel(session, "navMenu", selected = "Experiments")
     showTab("navMenu", target = "Experiments")
-    showTab("navMenu", target = "Plots")
     
     # Identify possible genes and relevant values based on selected contrast
     geneValues <- dbGetQuery(con, paste0(
@@ -201,6 +225,11 @@ server <- function(input, output, session) {
       WHERE contrast = '", selectedContrast(), "' and experiment_id = '",exp_id(),"';"
     ))
     
+    # geneValues$pval <- as.numeric(geneValues$pval)
+    # geneValues <- geneValues[!is.na(geneValues$pval), ]
+    # print(unique(geneValues$pval[is.na(as.numeric(geneValues$pval)) & !is.na(geneValues$pval)]))
+    # 
+    # 
     experimentData(geneValues)
     
     # Output the table
@@ -208,12 +237,18 @@ server <- function(input, output, session) {
     #   datatable(geneValues)
     # })
     
-    # Update experiment description
+    # Update experiment description in Experiments and Plots tabs
     output$experimentAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
     output$experimentDescription <- renderUI({
       HTML(paste0("<em>", selectedDescription(), "</em>"))
       })
     output$experimentContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
+    
+    # output$plotsAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
+    # output$plotsDescription <- renderUI({
+    #   HTML(paste0("<em>", selectedDescription(), "</em>"))
+    # })
+    # output$plotsContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
     
     # Refine side panel
     updateSelectizeInput(session,
@@ -226,6 +261,11 @@ server <- function(input, output, session) {
   filteredExpData <- reactive({
     req(experimentData())
     data <- experimentData()
+    
+    # remove NA values
+    # data <- df[!is.na(df$pval), ]
+    # data <- filter(data, !is.na(pval))
+    # data$pval <- as.numeric(data$pval)
 
     # Filter based on gene_id
     if (!is.null(input$refineGene)){
@@ -243,7 +283,6 @@ server <- function(input, output, session) {
     }
     
     # Filter based on logFC
-    ### if radio button == a, then do a
     if (!is.null(input$lFC) && !is.na(input$lFC)){
       if (input$lFCRegulation == "Up- or Downregulated"){
         data <- filter(data, log2FC >= input$lFC | log2FC <= -input$lFC)
@@ -265,10 +304,24 @@ server <- function(input, output, session) {
 
     datatable(filteredExpData(),
               rownames = FALSE,
-              colnames = c("Gene", "Functional Annotation", HTML("Log<sub>2</sub>-Fold Change"), 
+              colnames = c("Gene", "Functional Annotation", HTML("Log<sub>2</sub>-Fold Change"),
                            "Log-Fold Change Standard Error",  HTML("P&#8209;Value"), HTML("P&#8209;Adjusted")),
               escape = FALSE)
   })
+  
+  ## Download button downloads table
+  output$exportExpTable <- downloadHandler(
+    filename = function() {
+      paste0(selectedContrast(), "_", 
+             selectedAuthor(), "_", 
+             selectedYear(), "_", 
+             format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), 
+             ".csv")
+    },
+    content = function(file) {
+      write.csv(filteredExpData(), file, row.names = FALSE)
+    }
+  )
   
   ## Clear button resets side panel values
   observeEvent(input$clearExperiments, {
@@ -279,5 +332,150 @@ server <- function(input, output, session) {
     updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
   })
   
+  ## Generate interactive volcano plot
+  output$volcanoPlot <- renderPlotly({
+    entire_df <- filteredExpData()
+    # remove empty pval 
+    # entire_df <- entire_df %>% filter(!is.na(pval))
+    entire_df <- filter(entire_df, !is.na(pval))
+      
+    # Set significant values for log2FC and pvalue
+    if (!is.null(input$lFC) && !is.na(input$lFC)){
+      fold <- input$lFC
+    } else {
+      fold <- 1
+    }
+    if (!is.null(input$pvalue) && !is.na(input$pvalue)){
+      pval <- input$pvalue
+    } else {
+      pval <- 0.05
+    }
+    
+    # create ggplot volcano plot
+    p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval)
+    
+    # save plot so it can be downloaded
+    volcano(p)
+    
+    # display interactive plot
+    ggplotly(p, tooltip = "text")
+  })
   
+  ## Download button downloads volcano plot
+  output$exportVolcano <- downloadHandler(
+    filename = function() {
+      paste0(selectedContrast(), "_", 
+             selectedAuthor(), "_", 
+             selectedYear(), "_", 
+             format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), 
+             ".png")
+    },
+    content = function(file) {
+      ggsave(
+        filename = file,
+        plot = volcano(), 
+        device = "png",
+        width = 8,
+        height = 6,
+        dpi = 300
+      )
+    }
+  )
+  
+  
+  output$heatmap <- renderPlot({
+    # Execute DB search 
+    all_DEGs <- dbGetQuery(con, paste0(
+      "SELECT 
+        GeneContrasts.gene_id,
+        GeneContrasts.contrast,
+        DEG.log2FC,
+        DEG.lfcSE,
+        DEG.pval,
+        DEG.padj
+      FROM GeneContrasts
+      JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
+      WHERE experiment_id = '", exp_id(), "';"
+    ))
+    
+
+    # First, filter by contrast-specific criteria
+    filtered_genes <- all_DEGs %>%
+      filter(contrast == selectedContrast())
+    
+    # Apply the filters on pval, padj, log2FC, etc.
+    if (!is.null(input$refineGene)){
+      filtered_genes <- filter(filtered_genes, gene_id %in% input$refineGene)
+      }
+    if (!is.null(input$pvalue) && !is.na(input$pvalue)){
+      filtered_genes <- filter(filtered_genes, pval < input$pvalue)
+    }
+    if (!is.null(input$padj) && !is.na(input$padj)){
+      filtered_genes <- filter(filtered_genes, padj < input$padj)
+    }
+    if (!is.null(input$lFC) && !is.na(input$lFC)){
+      if (input$lFCRegulation == "Up- or Downregulated"){
+        filtered_genes <- filter(filtered_genes, log2FC >= input$lFC | log2FC <= -input$lFC)
+      }
+      if (input$lFCRegulation == "Upregulated only"){
+        filtered_genes <- filter(filtered_genes, log2FC >= input$lFC)
+      }
+      if (input$lFCRegulation == "Downregulated only"){
+        filtered_genes <- filter(filtered_genes, log2FC <= -input$lFC)
+      }
+    }
+    
+    # Now extract the gene IDs that passed contrast-specific filtering
+    selected_genes <- unique(filtered_genes$gene_id)
+    
+    # Subset the full all_DEGs to include *all* contrasts for those genes
+    plot_data <- all_DEGs %>% filter(gene_id %in% selected_genes)
+    
+
+    
+    # reorder the contrasts so that the selected contrast is the first
+    target_contrast <- selectedContrast()
+    
+    # Get all contrast levels, and reorder to put target first
+    contrast_levels <- unique(all_DEGs$contrast)
+    ordered_levels <- c(target_contrast, setdiff(contrast_levels, target_contrast))
+    
+    # Reorder the contrast factor
+    all_DEGs$contrast <- factor(all_DEGs$contrast, levels = ordered_levels)
+    
+    plot_data$contrast <- factor(plot_data$contrast, levels = ordered_levels)
+    # count how many contrasts are being shows
+    
+    
+    # generate heatmap only if <20 genes are selected
+    if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
+      plot <- DEG_heatmap(plot_data)
+      heatmap(plot)
+      plot
+    }
+
+  })
+  
+  ## Download button downloads heatmap
+  output$exportHeatmap <- downloadHandler(
+    filename = function() {
+      paste0(selectedContrast(), "_", 
+             selectedAuthor(), "_", 
+             selectedYear(), "_", 
+             format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), 
+             ".png")
+    },
+    content = function(file) {
+      ggsave(
+        filename = file,
+        plot = heatmap(), 
+        device = "png",
+        width = 8,
+        height = 6,
+        dpi = 300
+      )
+    }
+  )
+  
+
 }

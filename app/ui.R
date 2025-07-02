@@ -39,7 +39,8 @@ ui <- fluidPage(
                 textOutput("speciesMessage"),
                 textOutput("keywordMessage"),
                 textOutput("fromYearMessage"),
-                textOutput("toYearMessage")
+                textOutput("toYearMessage"),
+                verbatimTextOutput("troubleshootingCondition")
               )
             ),
     nav_panel(title = "Experiments",
@@ -85,14 +86,69 @@ ui <- fluidPage(
                              choices = c("Up- or Downregulated", "Upregulated only", "Downregulated only")),
                 br(),
                 actionButton("clearExperiments", "Clear"),
-                actionButton("exportExperiments", "Export Table", icon = icon("download"))
+                # actionButton("exportExperiments", "Export Table", icon = icon("download"))
               ),
               mainPanel(
-                DTOutput("experimentTable"),
+                navset_card_underline(
+                  nav_panel("Data Table", 
+                            # actionButton("exportExpTable", "Export Table", icon = icon("download"))
+                            tags$div(
+                              style = "text-align: right;",
+                              downloadButton(
+                                outputId = "exportExpTable", 
+                                label = "Export Table", 
+                                # class = "btn-primary"
+                                # icon = icon("download"),
+                                # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
+                              )
+                            ),
+                            br(),
+                            DTOutput("experimentTable")),
+                  nav_panel("Volcano Plot",
+                            # actionButton("exportVolcano", "Export Plot", icon = icon("download")),
+                            tags$div(
+                              style = "text-align: right;",
+                              downloadButton(
+                                outputId = "exportVolcano", 
+                                label = "Export Plot", 
+                                # icon = icon("download"),
+                                # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
+                              )
+                            ),
+                            br(),
+                            plotlyOutput("volcanoPlot")
+                            ),
+                  nav_panel("Expression Heatmap",
+                            tags$div(
+                              style = "text-align: right;",
+                              downloadButton(
+                                outputId = "exportHeatmap", 
+                                label = "Export Plot", 
+                                # icon = icon("download"),
+                                # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
+                              )
+                            ),
+                            br(),
+                            plotOutput("heatmap"))
+                ),
+                # DTOutput("experimentTable"),
                 textOutput("testMessage")
                 )
               ),
-    nav_panel(title = "Plots",
-              ),
+    # nav_panel(title = "Plots",
+    #           fluidRow(
+    #             column(
+    #               width = 12,
+    #               div(
+    #                 style = "background-color: #f0f0f0; padding: 10px; margin-bottom: 10px;",
+    #                 h4("Experiment Summary"),
+    #                 textOutput("plotsAuthorYear"),
+    #                 uiOutput("plotsDescription"),
+    #                 textOutput("plotsContrast")
+    #               )
+    #             )
+    #           ),
+    #           # plotlyOutput("volcanoPlot")
+    #           ),
     )
 )

@@ -57,6 +57,8 @@ known_gene_ids = []
 exp_id = ""
 contrast = ""
 stored_exp_id = []
+stored_contrasts = set()
+stored_gene_contrasts = set()
 
 
 # Create a function to insert gene_id and fungal species into the Genes table
@@ -112,6 +114,12 @@ def insert_gene_contrasts_DEG(db_cursor, gene_id, contrast, lFC, lfcSE, pval, pa
         (gene_contrast, lFC, lfcSE, pval, padj)
     )
 
+# Safely insert float values or none when an NA value is encountered
+def safe_float(value):
+    try:
+        return float(value)
+    except:
+        return None
 
 with open(args.genes_file, mode='r', encoding='utf-8') as file, \
     sqlite3.connect(args.database) as db_connection:
@@ -129,8 +137,8 @@ with open(args.genes_file, mode='r', encoding='utf-8') as file, \
         next(reader) # Skip the header row
 
         ## Determine which genes are populated in the DB
-        query = 'SELECT gene_id FROM Genes;'
-        cursor.execute(query)
+        query_gene_id = 'SELECT gene_id FROM Genes;'
+        cursor.execute(query_gene_id)
         known_gene_ids.extend([row[0] for row in cursor.fetchall()])
 
         # ## Insert genes data
@@ -144,16 +152,21 @@ with open(args.genes_file, mode='r', encoding='utf-8') as file, \
         #         exit(f'Error: could not enter gene expression data: {e}')
     
         ## Determine which experiments are populated in the DB
-        query = 'SELECT experiment_id FROM Experiments;'
-        cursor.execute(query)
+        query_exp_id = 'SELECT experiment_id FROM Experiments;'
+        cursor.execute(query_exp_id)
         stored_exp_id.extend([row[0] for row in cursor.fetchall()])
+
+        ## Determine which gene_contrasts are populated in the DB
+        query_gene_contrast = "SELECT gene_contrast FROM DEG;"
+        cursor.execute(query_gene_contrast)
+        stored_gene_contrasts.update([row[0] for row in cursor.fetchall()])
         
         ## Perform different arguments depending on the input files
         if args.experiment_file:
             with open(args.experiment_file, mode='r', encoding='utf-8') as exp_file:
-                if args.genes_file.endswith('.csv'):
+                if args.experiment_file.endswith('.csv'):
                     delimeter2 = ','
-                elif args.genes_file.endswith('.txt'):
+                elif args.experiment_file.endswith('.txt'):
                     delimeter2 = '\t'
                 else:
                     raise ValueError('Unsupported file type.')
@@ -171,6 +184,15 @@ with open(args.genes_file, mode='r', encoding='utf-8') as file, \
                     author = exp_row[0]
                     year = exp_row[1]
                     description = exp_row[2]
+            # with open(args.experiment_file, mode='r', encoding='utf-8') as exp_file:
+            #     reader = csv.DictReader(exp_file)
+            #     for row in reader:
+            #         if not row.get("keywords"):
+            #             continue
+            #         keys = [k.strip() for k in row["keywords"].split(",")]
+            #         author = row["author"]
+            #         year = row["year"]
+            #         description = row["description"]
 
                 ## Insert genes data
                 exp_id = author + "_" + year
@@ -179,14 +201,29 @@ with open(args.genes_file, mode='r', encoding='utf-8') as file, \
                         if i == 0:
                             contrast = write_contrast(row[1], row[2])
                         insert_species(cursor, row[0])
-                        insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10], exp_id)
+                        gene_contrast = row[0] + "_" + contrast
+                        if gene_contrast not in stored_gene_contrasts:
+                            insert_gene_contrasts_DEG(cursor, 
+                                                      row[0], 
+                                                      contrast, 
+                                                      safe_float(row[6]), 
+                                                      safe_float(row[7]),
+                                                      safe_float(row[9]), 
+                                                      safe_float(row[10]), 
+                                                      exp_id)
                     except Exception as e:
                         exit(f'Error: could not enter gene expression data: {e}')
+
+                ## Check what contrasts are stored in the DB
+                contrast_query = f"SELECT contrast FROM ExpContrasts WHERE experiment_id = '{exp_id}';"
+                cursor.execute(contrast_query)
+                stored_contrasts.update([row[0] for row in cursor.fetchall()])
 
                 ## Insert the experiment data
                 try:
                     insert_experiment(cursor, author, year, description, args.species, keys)
-                    insert_exp_contrast(cursor, author, year, contrast)
+                    if contrast not in stored_contrasts:
+                        insert_exp_contrast(cursor, author, year, contrast)
                 except Exception as e:
                     exit(f"Error: could not enter experiment data: {e}")
                 # for exp_row in exp_reader:
@@ -206,13 +243,20 @@ with open(args.genes_file, mode='r', encoding='utf-8') as file, \
                     if i == 0:
                         contrast = write_contrast(row[1], row[2])
                     insert_species(cursor, row[0])
-                    insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10], exp_id)
+                    gene_contrast = row[0] + "_" + contrast
+                    if gene_contrast not in stored_gene_contrasts:
+                        insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10], exp_id)
                 except Exception as e:
                     exit(f'Error: could not enter gene expression data: {e}')
+            
+            contrast_query = f"SELECT contrast FROM ExpContrasts WHERE experiment_id = '{exp_id}';"
+            cursor.execute(contrast_query)
+            stored_contrasts.update([row[0] for row in cursor.fetchall()])
 
             try:
                 insert_experiment(cursor, args.author, args.year, args.description, args.species, args.keyword)
-                insert_exp_contrast(cursor, args.author, args.year, contrast)   
+                if contrast not in stored_contrasts:
+                    insert_exp_contrast(cursor, args.author, args.year, contrast)   
             except Exception as e:
                 exit(f"Error: could not enter experiment data: {e}")
 
@@ -225,12 +269,19 @@ with open(args.genes_file, mode='r', encoding='utf-8') as file, \
                     if i == 0:
                         contrast = write_contrast(row[1], row[2])
                     insert_species(cursor, row[0])
-                    insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10], exp_id)
+                    gene_contrast = row[0] + "_" + contrast
+                    if gene_contrast not in stored_gene_contrasts:
+                        insert_gene_contrasts_DEG(cursor, row[0], contrast, row[6], row[7], row[9], row[10], exp_id)
                 except Exception as e:
                     exit(f'Error: could not enter gene expression data: {e}')
 
+            contrast_query = f"SELECT contrast FROM ExpContrasts WHERE experiment_id = '{exp_id}';"
+            cursor.execute(contrast_query)
+            stored_contrasts.update([row[0] for row in cursor.fetchall()])
+
             try:
-                insert_exp_contrast(cursor, args.author, args.year, contrast)
+                if contrast not in stored_contrasts:
+                    insert_exp_contrast(cursor, args.author, args.year, contrast)
             except Exception as e:
                 exit(f"Error: could not enter experiment data: {e}")
 

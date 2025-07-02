@@ -25,7 +25,7 @@ args = parser.parse_args()
 conn = sqlite3.connect(args.database)
 
 # Define a set to store geneIDs
-geneID = []
+geneID = set()
 
 
 # Open and read the annotation file and populate the database
@@ -50,14 +50,17 @@ with open(args.annotation_file, mode='r', encoding='utf-8') as file, \
     queryGeneID = 'SELECT gene_id FROM GeneFunctions;'
     cursor.execute(queryGeneID)
     # Store the geneIDs
-    geneID.extend([row[0] for row in cursor.fetchall()])
+    geneID.update([row[0] for row in cursor.fetchall()])
 
     ## Input the geneIDs and functions
     for row in reader:
         try:
             if row[0] not in geneID:
-                cursor.execute(f'INSERT INTO GeneFunctions VALUES ("{row[0]}", "{row[2]}");')
-                geneID.append(row[0])
+                cursor.execute(
+                    'INSERT INTO GeneFunctions (gene_id, gene_function) VALUES (?, ?)',
+                    (row[0], row[2])
+                )
+                geneID.add(row[0])
         except Exception as e:
             exit(f'Error inserting row {row}: {e}')
 
