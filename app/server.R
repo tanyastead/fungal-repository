@@ -36,7 +36,7 @@ server <- function(input, output, session) {
     
     # For Experiments side panel
     updateSelectizeInput(session, "refineGene", selected = character(0))
-    updateTextInput(session, "refineFunctionExp", value = "")
+    updateSelectizeInput(session, "refineFunctionExp", choices = NULL, selected = NULL, server = TRUE)
     updateNumericInput(session, "pvalue", value = NA)
     updateNumericInput(session, "padj", value = NA)
     updateNumericInput(session, "lFC", value = NA)
@@ -319,8 +319,6 @@ server <- function(input, output, session) {
     
     data <- queryData()
     
-    # refSpec(input$refineSpecies)
-    
     # Filter based on year
     if (!is.null(input$fromYear) && input$fromYear != "") {
       data <- dplyr::filter(data, year >= input$fromYear)
@@ -421,38 +419,8 @@ server <- function(input, output, session) {
       mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/search/ontology?q=',
                                     go_term, '" target="_blank">', gene_function, '</a>'))
       
-      # # Set the contrast column as clickable links, and combine contrasts into a single cell
-      # processedTable <- tableQuery %>%
-      # # mutate contrasts as hyperlinks set to open new tabs.
-      # mutate(hyperlink = paste0('<a href="#" onclick="Shiny.setInputValue(\'goToTab\', {',
-      #                           'contrast: \'', contrast, '\', ',
-      #                           'author: \'', author, '\', ',
-      #                           'year: ', year, ', ',
-      #                           'description: \'', description, '\', ',
-      #                           'priority: \'event\'',
-      #                           '})">',
-      #                           contrast,
-      #                           '</a>')) %>% # priority event forces the hyperlink to work every time it is clicked
-      # # mutate gene function as hyperlinks set to open go term page
-      # mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/search/ontology?q=',
-      #                               go_term, '" target="_blank">', gene_function, '</a>')) %>%
-      # # groups table where ALL listed values are identical
-      # group_by(species, gene_id, go_term,gene_function, author, year, description) %>%
-      # # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
-      # summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"),
-      #           keywords = paste(unique(keyword), collapse = "; "),
-      #           .groups = 'drop') %>%
-      # # sort the order of the columns
-      # select(species, keywords, go_term, gene_id, gene_function, contrasts, author, year, description)
-    
     # Save the table
     experimentData(processedExpTable)
-    # experimentData(geneValues)
-    
-    # Output the table
-    # output$experimentTable <- renderDataTable({
-    #   datatable(geneValues)
-    # })
     
     # Update experiment description in Experiments and Plots tabs
     output$experimentAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
@@ -460,12 +428,6 @@ server <- function(input, output, session) {
       HTML(paste0("<em>", selectedDescription(), "</em>"))
       })
     output$experimentContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
-    
-    # output$plotsAuthorYear <- renderText(paste0(selectedAuthor(), ", ", selectedYear()))
-    # output$plotsDescription <- renderUI({
-    #   HTML(paste0("<em>", selectedDescription(), "</em>"))
-    # })
-    # output$plotsContrast <- renderText(paste0("Selected contrast: ", selectedContrast()))
     
     # Refine side panel
     updateSelectizeInput(session,
@@ -560,7 +522,7 @@ server <- function(input, output, session) {
   ## Clear button resets side panel values
   observeEvent(input$clearExperiments, {
     updateSelectizeInput(session, "refineGene", selected = character(0))
-    updateTextInput(session, "refineFunctionExp", value = "")
+    updateSelectizeInput(session, "refineFunctionExp", choices = NULL, selected = NULL, server = TRUE)
     updateNumericInput(session, "pvalue", value = NA)
     updateNumericInput(session, "padj", value = NA)
     updateNumericInput(session, "lFC", value = NA)
@@ -616,13 +578,107 @@ server <- function(input, output, session) {
     }
   )
   
-  
+  # output$heatmap <- renderPlot({
+  #   
+  #   ### WORKING ----
+  #   # Execute DB search
+  #   # all_DEGs <- dbGetQuery(con, paste0(
+  #   #   "SELECT
+  #   #     GeneContrasts.gene_id,
+  #   #     GeneContrasts.contrast,
+  #   #     DEG.log2FC,
+  #   #     DEG.lfcSE,
+  #   #     DEG.pval,
+  #   #     DEG.padj
+  #   #   FROM GeneContrasts
+  #   #   JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
+  #   #   WHERE experiment_id = '", exp_id(), "';"
+  #   # ))
+  #   ### WORKING ----
+  #   
+  #   ### BROKEN -----
+  #     # Execute DB search
+  #     all_DEGs <- dbGetQuery(con, paste0(
+  #       "SELECT
+  #         GeneContrasts.gene_id,
+  #         GeneContrasts.contrast,
+  #         GeneFunctions.gene_function,
+  #         DEG.log2FC,
+  #         DEG.lfcSE,
+  #         DEG.pval,
+  #         DEG.padj
+  #       FROM GeneContrasts
+  #       LEFT JOIN GeneFunctions ON GeneContrasts.gene_id = GeneFunctions.gene_id
+  #       JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
+  #       WHERE experiment_id = '", exp_id(), "';"
+  #     ))
+  #   ### BROKEN -----
+  #   
+  #   
+  #   # First, filter by contrast-specific criteria
+  #   filtered_genes <- all_DEGs %>%
+  #     filter(contrast == selectedContrast())
+  #   
+  #   # Apply the filters on pval, padj, log2FC, etc.
+  #   if (!is.null(input$refineGene)){
+  #     filtered_genes <- filter(filtered_genes, gene_id %in% input$refineGene)
+  #   }
+  #   if (!is.null(input$pvalue) && !is.na(input$pvalue)){
+  #     filtered_genes <- filter(filtered_genes, pval < input$pvalue)
+  #   }
+  #   if (!is.null(input$padj) && !is.na(input$padj)){
+  #     filtered_genes <- filter(filtered_genes, padj < input$padj)
+  #   }
+  #   if (!is.null(input$lFC) && !is.na(input$lFC)){
+  #     if (input$lFCRegulation == "Up- or Downregulated"){
+  #       filtered_genes <- filter(filtered_genes, log2FC >= input$lFC | log2FC <= -input$lFC)
+  #     }
+  #     if (input$lFCRegulation == "Upregulated only"){
+  #       filtered_genes <- filter(filtered_genes, log2FC >= input$lFC)
+  #     }
+  #     if (input$lFCRegulation == "Downregulated only"){
+  #       filtered_genes <- filter(filtered_genes, log2FC <= -input$lFC)
+  #     }
+  #   }
+  #   
+  #   # Now extract the gene IDs that passed contrast-specific filtering
+  #   selected_genes <- unique(filtered_genes$gene_id)
+  #   
+  #   # Subset the full all_DEGs to include *all* contrasts for those genes
+  #   plot_data <- all_DEGs %>% filter(gene_id %in% selected_genes)
+  #   
+  #   
+  #   
+  #   # reorder the contrasts so that the selected contrast is the first
+  #   target_contrast <- selectedContrast()
+  #   
+  #   # Get all contrast levels, and reorder to put target first
+  #   contrast_levels <- unique(all_DEGs$contrast)
+  #   ordered_levels <- c(target_contrast, setdiff(contrast_levels, target_contrast))
+  #   
+  #   # Reorder the contrast factor
+  #   all_DEGs$contrast <- factor(all_DEGs$contrast, levels = ordered_levels)
+  #   
+  #   plot_data$contrast <- factor(plot_data$contrast, levels = ordered_levels)
+  #   # count how many contrasts are being shows
+  #   
+  #   
+  #   # generate heatmap only if <20 genes are selected
+  #   if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
+  #     plot <- DEG_heatmap(plot_data)
+  #     heatmap(plot)
+  #     plot
+  #   }
+  #   
+  # })
+ 
+  ### HEATMAP NOT WORKING PROPERLY - ORIGINAL CODE -------------- 
   output$heatmap <- renderPlot({
     ##TODO: Set log2FC scale to static???
-    
-    # Execute DB search 
+
+    # Execute DB search
     all_DEGs <- dbGetQuery(con, paste0(
-      "SELECT 
+      "SELECT
         GeneContrasts.gene_id,
         GeneContrasts.contrast,
         GeneFunctions.gene_function,
@@ -631,16 +687,16 @@ server <- function(input, output, session) {
         DEG.pval,
         DEG.padj
       FROM GeneContrasts
-      JOIN GeneFunctions ON GeneContrasts.gene_id = GeneFunctions.gene_id
+      LEFT JOIN GeneFunctions ON GeneContrasts.gene_id = GeneFunctions.gene_id
       JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
       WHERE experiment_id = '", exp_id(), "';"
     ))
-    
+
 
     # First, filter by contrast-specific criteria
     filtered_genes <- all_DEGs %>%
       filter(contrast == selectedContrast())
-    
+
     # Apply the filters on pval, padj, log2FC, etc.
     if (!is.null(input$refineGene)){
       filtered_genes <- filter(filtered_genes, gene_id %in% input$refineGene)
@@ -648,7 +704,7 @@ server <- function(input, output, session) {
     # Filter based on function
     if (!is.null(input$refineFunctionExp) && length(input$refineFunctionExp) > 0) {
       filtered_genes <- filtered_genes %>%
-        filter(reduce(input$refineFunctionExp, 
+        filter(reduce(input$refineFunctionExp,
                       ~ .x | str_detect(gene_function, fixed(.y, ignore_case = TRUE)),
                       .init = FALSE))
     }
@@ -669,26 +725,26 @@ server <- function(input, output, session) {
         filtered_genes <- filter(filtered_genes, log2FC <= -input$lFC)
       }
     }
-    
+
     # Now extract the gene IDs that passed contrast-specific filtering
     selected_genes <- unique(filtered_genes$gene_id)
-    
+
     # Subset the full all_DEGs to include *all* contrasts for those genes
     plot_data <- all_DEGs %>% filter(gene_id %in% selected_genes)
-    
+
 
     # reorder the contrasts so that the selected contrast is the first
     target_contrast <- selectedContrast()
-    
+
     # Get all contrast levels, and reorder to put target first
     contrast_levels <- unique(all_DEGs$contrast)
     ordered_levels <- c(target_contrast, setdiff(contrast_levels, target_contrast))
-    
+
     # Reorder the contrast factor
     all_DEGs$contrast <- factor(all_DEGs$contrast, levels = ordered_levels)
-    
+
     plot_data$contrast <- factor(plot_data$contrast, levels = ordered_levels)
-    
+
     # generate heatmap only if <20 genes are selected
     if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
       plot <- DEG_heatmap(plot_data)
@@ -696,7 +752,9 @@ server <- function(input, output, session) {
       plot
     }
 
+
   })
+  ### HEATMAP NOT WORKING PROPERLY - ORIGINAL CODE --------------
   
   ## Download button downloads heatmap
   output$exportHeatmap <- downloadHandler(
