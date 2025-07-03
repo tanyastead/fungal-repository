@@ -29,3 +29,5 @@ Populating the database requires the following data:
 
 ## Connecting the SQLite Database
 Change the full path of `repository.sqlite` defined in `./app/global.R` to the full path on your local machine
+
+## Running the app

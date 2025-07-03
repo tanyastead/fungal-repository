@@ -1,5 +1,9 @@
 # ui.R
 ui <- fluidPage(
+  # theme = my_theme,
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+  ),
   titlePanel("Fungal Transcriptomic Database"),
   navset_tab(id = "navMenu",
     nav_panel(title = "Search",
@@ -7,37 +11,36 @@ ui <- fluidPage(
               br(), br(),
               # fluidRow(
               #     column(4, textInput("query", NULL, placeholder = "Enter search text...")),
-              #     column(4, selectInput("term", NULL, choices = c("Gene ID","Gene Function", "Keyword"))),
+              #     column(4, selectInput("term", NULL, choices = c("Gene (Name or Function)", "Keyword"))),
               #     column(4, actionButton("search", "Search"))
               #     )
               fluidRow(column(8, offset = 2,
-                              
-                        
-                                  
                                   # Horizontal alignment using flexbox
                                   div(style = "display: flex; justify-content: space-between; align-items: center;",
-                                      
                                       # Text Input
-                                      div(style = "flex: 1; padding-right: 10px;margin-top: 15px;",
+                                      div(style = "flex: 2; padding-right: 10px;margin-top: 15px;",
                                           textInput("query", NULL, placeholder = "Enter search text...", width = "100%")
                                       ),
-                                      
                                       # Select Input
-                                      div(style = "flex: 1; padding: 0 10px;margin-top: 15px;",
+                                      div(style = "flex: 2; padding: 0 10px;margin-top: 15px;",
                                           selectInput("term", NULL,
-                                                      choices = c("Gene ID", "Gene Function", "Keyword"),
+                                                      choices = c("Gene (Name or Function)", "Keyword"),
                                                       width = "100%")
                                       ),
-                                      
                                       # Search Button aligned using margin-top
                                       div(style = "flex: 1; padding-left: 10px;",
                                           div(style = "display: flex; align-items: center; height: 100%;",
                                               actionButton("search", "Search", 
-                                                           
                                                            style = "width: 100%; margin-top: 0; line-height: 1.8;height: 38px;")
                                           )
                                       )
-                                  )
+                                  ),
+                              tags$hr(style = "margin-top: 20px; margin-bottom: 10px;"),
+                              
+                              # Add text underneath the line
+                              div(style = "text-align: center; color: #555; font-style: italic;",
+                                  "Search by gene ID, gene function or experiment keywords (e.g. temperature)"
+                              )
                               
               ))
               ),
@@ -67,11 +70,11 @@ ui <- fluidPage(
               ),
               mainPanel(
                 DTOutput("tableData"),
-                textOutput("speciesMessage"),
-                textOutput("keywordMessage"),
-                textOutput("fromYearMessage"),
-                textOutput("toYearMessage"),
-                verbatimTextOutput("troubleshootingCondition")
+                # textOutput("speciesMessage"),
+                # textOutput("keywordMessage"),
+                # textOutput("fromYearMessage"),
+                # textOutput("toYearMessage"),
+                # verbatimTextOutput("troubleshootingCondition")
               )
             ),
     nav_panel(title = "Experiments",
@@ -93,8 +96,11 @@ ui <- fluidPage(
                                NULL,
                                choices = NULL,
                                multiple = TRUE,
-                               options = list(placeholder = "Enter gene...")),
+                               options = list(placeholder = "Enter gene name...")),
                 # refine output - gene function??
+                selectizeInput("refineFunctionExp", 
+                               NULL, choices = NULL, multiple = TRUE, 
+                               options = list(create = TRUE, placeholder = "Enter functional annotation...")),
                 numericInput("pvalue",
                              "p-value <",
                              value = NULL,
@@ -135,6 +141,8 @@ ui <- fluidPage(
                             ),
                             br(),
                             DTOutput("experimentTable")),
+                            br(),
+                            
                   nav_panel("Volcano Plot",
                             # actionButton("exportVolcano", "Export Plot", icon = icon("download")),
                             tags$div(
@@ -163,23 +171,9 @@ ui <- fluidPage(
                             plotOutput("heatmap"))
                 ),
                 # DTOutput("experimentTable"),
-                textOutput("testMessage")
+                # textOutput("testMessage"),
+                # verbatimTextOutput("testSearchExpOutput")
                 )
-              ),
-    # nav_panel(title = "Plots",
-    #           fluidRow(
-    #             column(
-    #               width = 12,
-    #               div(
-    #                 style = "background-color: #f0f0f0; padding: 10px; margin-bottom: 10px;",
-    #                 h4("Experiment Summary"),
-    #                 textOutput("plotsAuthorYear"),
-    #                 uiOutput("plotsDescription"),
-    #                 textOutput("plotsContrast")
-    #               )
-    #             )
-    #           ),
-    #           # plotlyOutput("volcanoPlot")
-    #           ),
+              )
     )
 )

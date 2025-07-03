@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS GeneFunctions (
 
 /* Create the GeneFunctions_FTS table for rapid searching of gene functions */
 CREATE VIRTUAL TABLE IF NOT EXISTS GeneFunctions_FTS USING fts5 (
-    gene_id UNINDEXED,
+    gene_id,
     gene_function
 );
 
