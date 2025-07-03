@@ -578,101 +578,8 @@ server <- function(input, output, session) {
     }
   )
   
-  # output$heatmap <- renderPlot({
-  #   
-  #   ### WORKING ----
-  #   # Execute DB search
-  #   # all_DEGs <- dbGetQuery(con, paste0(
-  #   #   "SELECT
-  #   #     GeneContrasts.gene_id,
-  #   #     GeneContrasts.contrast,
-  #   #     DEG.log2FC,
-  #   #     DEG.lfcSE,
-  #   #     DEG.pval,
-  #   #     DEG.padj
-  #   #   FROM GeneContrasts
-  #   #   JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
-  #   #   WHERE experiment_id = '", exp_id(), "';"
-  #   # ))
-  #   ### WORKING ----
-  #   
-  #   ### BROKEN -----
-  #     # Execute DB search
-  #     all_DEGs <- dbGetQuery(con, paste0(
-  #       "SELECT
-  #         GeneContrasts.gene_id,
-  #         GeneContrasts.contrast,
-  #         GeneFunctions.gene_function,
-  #         DEG.log2FC,
-  #         DEG.lfcSE,
-  #         DEG.pval,
-  #         DEG.padj
-  #       FROM GeneContrasts
-  #       LEFT JOIN GeneFunctions ON GeneContrasts.gene_id = GeneFunctions.gene_id
-  #       JOIN DEG ON GeneContrasts.gene_contrast = DEG.gene_contrast
-  #       WHERE experiment_id = '", exp_id(), "';"
-  #     ))
-  #   ### BROKEN -----
-  #   
-  #   
-  #   # First, filter by contrast-specific criteria
-  #   filtered_genes <- all_DEGs %>%
-  #     filter(contrast == selectedContrast())
-  #   
-  #   # Apply the filters on pval, padj, log2FC, etc.
-  #   if (!is.null(input$refineGene)){
-  #     filtered_genes <- filter(filtered_genes, gene_id %in% input$refineGene)
-  #   }
-  #   if (!is.null(input$pvalue) && !is.na(input$pvalue)){
-  #     filtered_genes <- filter(filtered_genes, pval < input$pvalue)
-  #   }
-  #   if (!is.null(input$padj) && !is.na(input$padj)){
-  #     filtered_genes <- filter(filtered_genes, padj < input$padj)
-  #   }
-  #   if (!is.null(input$lFC) && !is.na(input$lFC)){
-  #     if (input$lFCRegulation == "Up- or Downregulated"){
-  #       filtered_genes <- filter(filtered_genes, log2FC >= input$lFC | log2FC <= -input$lFC)
-  #     }
-  #     if (input$lFCRegulation == "Upregulated only"){
-  #       filtered_genes <- filter(filtered_genes, log2FC >= input$lFC)
-  #     }
-  #     if (input$lFCRegulation == "Downregulated only"){
-  #       filtered_genes <- filter(filtered_genes, log2FC <= -input$lFC)
-  #     }
-  #   }
-  #   
-  #   # Now extract the gene IDs that passed contrast-specific filtering
-  #   selected_genes <- unique(filtered_genes$gene_id)
-  #   
-  #   # Subset the full all_DEGs to include *all* contrasts for those genes
-  #   plot_data <- all_DEGs %>% filter(gene_id %in% selected_genes)
-  #   
-  #   
-  #   
-  #   # reorder the contrasts so that the selected contrast is the first
-  #   target_contrast <- selectedContrast()
-  #   
-  #   # Get all contrast levels, and reorder to put target first
-  #   contrast_levels <- unique(all_DEGs$contrast)
-  #   ordered_levels <- c(target_contrast, setdiff(contrast_levels, target_contrast))
-  #   
-  #   # Reorder the contrast factor
-  #   all_DEGs$contrast <- factor(all_DEGs$contrast, levels = ordered_levels)
-  #   
-  #   plot_data$contrast <- factor(plot_data$contrast, levels = ordered_levels)
-  #   # count how many contrasts are being shows
-  #   
-  #   
-  #   # generate heatmap only if <20 genes are selected
-  #   if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
-  #     plot <- DEG_heatmap(plot_data)
-  #     heatmap(plot)
-  #     plot
-  #   }
-  #   
-  # })
  
-  ### HEATMAP NOT WORKING PROPERLY - ORIGINAL CODE -------------- 
+
   output$heatmap <- renderPlot({
     ##TODO: Set log2FC scale to static???
 
@@ -754,7 +661,7 @@ server <- function(input, output, session) {
 
 
   })
-  ### HEATMAP NOT WORKING PROPERLY - ORIGINAL CODE --------------
+
   
   ## Download button downloads heatmap
   output$exportHeatmap <- downloadHandler(
