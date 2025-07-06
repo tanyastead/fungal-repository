@@ -70,7 +70,7 @@ server <- function(input, output, session) {
                                   contrast,
                                   '</a>')) %>% # priority event forces the hyperlink to work every time it is clicked
         # mutate gene function as hyperlinks set to open go term page
-        mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/search/ontology?q=',
+        mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
                                       go_term, '" target="_blank">', gene_function, '</a>')) %>%
         # groups table where ALL listed values are identical
         group_by(species, gene_id, go_term,gene_function, author, year, description) %>%
@@ -178,7 +178,7 @@ server <- function(input, output, session) {
     #                               contrast,
     #                               '</a>')) %>% # priority event forces the hyperlink to work every time it is clicked
     #     # mutate gene function as hyperlinks set to open go term page
-    #     mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/search/ontology?q=',
+    #     mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
     #                                   go_term, '" target="_blank">', gene_function, '</a>')) %>%
     #     # groups table where ALL listed values are identical
     #     group_by(species, gene_id, go_term, gene_function, author, year, description) %>%
@@ -229,7 +229,7 @@ server <- function(input, output, session) {
     #                               contrast,
     #                               '</a>')) %>% # priority event forces the hyperlink to work every time it is clicked
     #     # mutate gene function as hyperlinks set to open go term page
-    #     mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/search/ontology?q=',
+    #     mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
     #                                   go_term, '" target="_blank">', gene_function, '</a>')) %>%
     #     # groups table where ALL listed values are identical
     #     group_by(species, gene_id, go_term,gene_function, author, year, description) %>%
@@ -416,7 +416,7 @@ server <- function(input, output, session) {
     # Hide the go_terms column and set gene_function as hyperlinks
     processedExpTable <- geneValues %>%
       # mutate gene function as hyperlinks set to open go term page
-      mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/search/ontology?q=',
+      mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
                                     go_term, '" target="_blank">', gene_function, '</a>'))
       
     # Save the table
@@ -654,9 +654,24 @@ server <- function(input, output, session) {
 
     # generate heatmap only if <20 genes are selected
     if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
+      # Wipe the message
+      output$heatmapText <- NULL
+      # Plot the heatmap
       plot <- DEG_heatmap(plot_data)
       heatmap(plot)
       plot
+      
+    } else {
+      # Print output mnessage
+      output$heatmapText <- renderUI({
+        HTML('<span style="font-weight: bold;">
+          Too many genes selected!<br>
+          <i>Select fewer than 20 genes to generate expression heatmap</i>
+        </span>')
+      })
+      # Colour the empty plot space to match the background
+      par(bg = "#f5f7fa")
+      plot(1, type = "n", axes = FALSE, xlab = "", ylab = "", main = "")
     }
 
 

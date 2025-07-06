@@ -168,6 +168,11 @@ ui <- fluidPage(
                               )
                             ),
                             br(),
+                            tags$div(
+                              uiOutput("heatmapText"),
+                              style = "font-size: 16px; color: #2c3e50; font-weight: 500; margin-bottom: 10px;text-align: center;"
+                            ),
+                            # textOutput("heatmapText"),
                             plotOutput("heatmap"))
                 ),
                 # DTOutput("experimentTable"),
