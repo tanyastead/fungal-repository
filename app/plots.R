@@ -1,7 +1,7 @@
 # File to store functions used to create plots in main app
 
 # Interactive Volcano plot function
-interactive_volcano <- function(data, lFC, pv){
+interactive_volcano <- function(data, lFC, pv, cont){
   # 1. subset the df to obtain just the gene name, log2FC and padj
   subset_df <- data[c("gene_id", "log2FC", "padj", "gene_function")]
   
@@ -66,7 +66,9 @@ interactive_volcano <- function(data, lFC, pv){
     ) + # since some genes can have minuslog10padj of inf, we set these limits
     labs(color = 'Expression', #legend_title, 
          x = "log2 Fold Change", y = "-log10 p-value") +
-    theme(axis.text.x = element_text(size = 8)) +
+    ggtitle(paste0("Volcano plot of contrast ", cont, "\n",
+                   "log fold change = ", lFC, " and p-adjusted = ", pv)) +
+    theme(axis.text.x = element_text(size = 8),  plot.title = element_text(size = 10)) +
     # scale_y_continuous(
     #   name = "-log10(p-adj)",
     #   sec.axis = sec_axis(

@@ -390,13 +390,15 @@ server <- function(input, output, session) {
     }
     
     # create ggplot volcano plot
-    p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval)
+    p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval, cont = selectedContrast())
     
     # save plot so it can be downloaded
     volcano(p)
     
     # display interactive plot
-    ggplotly(p, tooltip = "text")
+    ggplotly(p, tooltip = "text") %>% layout(
+      margin = list(t = 80)  # Increase top margin (default is usually ~50)
+    )
   })
   
   ## Download button downloads volcano plot
