@@ -155,7 +155,8 @@ ui <- fluidPage(
                               )
                             ),
                             br(),
-                            plotlyOutput("volcanoPlot")
+                            plotlyOutput("volcanoPlot"),
+                            verbatimTextOutput("testVolcanoClick")
                             ),
                   nav_panel("Expression Heatmap",
                             tags$div(

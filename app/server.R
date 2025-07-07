@@ -150,165 +150,6 @@ server <- function(input, output, session) {
       updateTabsetPanel(session, "navMenu", selected = "Results")
     }
     
-    ### ORIGINAL WORKING CODE FROM HERE ---------------
-    # if (input$term == "Gene ID") {
-    #   req(input$query)
-    #   # Query the DB
-    #   tableQuery <- dbGetQuery(con, paste0("
-    #     SELECT Genes.species, ExpKeywords.keyword, GeneFunctions.go_term, Genes.gene_id, GeneFunctions.gene_function,
-    #       GeneContrasts.contrast, Experiments.author,Experiments.year,Experiments.description
-    #       FROM Genes
-    #       JOIN GeneContrasts ON Genes.gene_id = GeneContrasts.gene_id
-    #       LEFT JOIN GeneFunctions ON Genes.gene_id = GeneFunctions.gene_id
-    #       JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
-    #       JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
-    #       WHERE Genes.gene_id = '", input$query, "' COLLATE NOCASE;"))
-    # 
-    #   print(head(tableQuery))
-    #   # Set the contrast column as clickable links, and combine contrasts into a single cell
-    #   processedTable <- tableQuery %>%
-    #     # mutate contrasts as hyperlinks set to open new tabs.
-    #     mutate(hyperlink = paste0('<a href="#" onclick="Shiny.setInputValue(\'goToTab\', {',
-    #                               'contrast: \'', contrast, '\', ',
-    #                               'author: \'', author, '\', ',
-    #                               'year: ', year, ', ',
-    #                               'description: \'', description, '\', ',
-    #                               'priority: \'event\'',
-    #                               '})">',
-    #                               contrast,
-    #                               '</a>')) %>% # priority event forces the hyperlink to work every time it is clicked
-    #     # mutate gene function as hyperlinks set to open go term page
-    #     mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
-    #                                   go_term, '" target="_blank">', gene_function, '</a>')) %>%
-    #     # groups table where ALL listed values are identical
-    #     group_by(species, gene_id, go_term, gene_function, author, year, description) %>%
-    #     # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
-    #     summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"),
-    #               keywords = paste(unique(keyword), collapse = "; "),
-    #               .groups = 'drop') %>%
-    #     # sort the order of the columns
-    #     select(species, keywords, go_term, gene_id, gene_function, contrasts, author, year, description)
-    # 
-    #   # Save the processedTable outside the observeEvent
-    #   queryData(processedTable)
-    # 
-    #   # Save specific column names outside the observeEvent
-    #   colnames(c("Species","Keywords","GO Term","Gene", "Functional Annotation", "Contrasts", "Author", "Year", "Description"))
-    # 
-    #   # save number of columns to hide
-    #   hidden_columns(c(0:2))
-    # 
-    #   # Switch view to the Results tab
-    #   showTab("navMenu", target = "Results")
-    #   updateTabsetPanel(session, "navMenu", selected = "Results")
-    #   #
-    # } else if (input$term == "Gene Function"){
-    #   req(input$query)
-    #   # Query the DB
-    #   tableQuery <- dbGetQuery(con, paste0("
-    #         SELECT Genes.species, ExpKeywords.keyword, GeneFunctions.go_term, GeneFunctions_FTS.gene_id, GeneFunctions_FTS.gene_function,
-    #         GeneContrasts.contrast, Experiments.author,Experiments.year,Experiments.description
-    #         FROM GeneFunctions_FTS
-    #         JOIN Genes ON GeneFunctions_FTS.gene_id = Genes.gene_id
-    #         JOIN GeneFunctions on GeneFunctions_FTS.gene_id = GeneFunctions.gene_id
-    #         JOIN GeneContrasts ON GeneFunctions_FTS.gene_id = GeneContrasts.gene_id
-    #         JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
-    #         JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
-    #         WHERE GeneFunctions_FTS.gene_function MATCH '",input$query,"';
-    #         "))
-    #   # Set the contrast column as clickable links, and combine contrasts into a single cell
-    #   processedTable <- tableQuery %>%
-    #     # mutate contrasts as hyperlinks set to open new tabs.
-    #     mutate(hyperlink = paste0('<a href="#" onclick="Shiny.setInputValue(\'goToTab\', {',
-    #                               'contrast: \'', contrast, '\', ',
-    #                               'author: \'', author, '\', ',
-    #                               'year: ', year, ', ',
-    #                               'description: \'', description, '\', ',
-    #                               'priority: \'event\'',
-    #                               '})">',
-    #                               contrast,
-    #                               '</a>')) %>% # priority event forces the hyperlink to work every time it is clicked
-    #     # mutate gene function as hyperlinks set to open go term page
-    #     mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
-    #                                   go_term, '" target="_blank">', gene_function, '</a>')) %>%
-    #     # groups table where ALL listed values are identical
-    #     group_by(species, gene_id, go_term,gene_function, author, year, description) %>%
-    #     # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
-    #     summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"),
-    #               keywords = paste(unique(keyword), collapse = "; "),
-    #               .groups = 'drop') %>%
-    #     # sort the order of the columns
-    #     select(species, keywords, go_term,gene_id, gene_function, contrasts, author, year, description)
-    # 
-    #   # Save the processedTable outside the observeEvent
-    #   queryData(processedTable)
-    # 
-    #   # Save specific column names outside the observeEvent
-    #   colnames(c("Species","Keywords","GO Term","Gene", "Functional Annotation", "Contrasts", "Author", "Year", "Description"))
-    # 
-    #   # save number of columns to hide
-    #   hidden_columns(c(0:2))
-    # 
-    #   # Switch view to the Results tab
-    #   showTab("navMenu", target = "Results")
-    #   updateTabsetPanel(session, "navMenu", selected = "Results")
-    # 
-    # } else if (input$term == "Keyword") {
-    #   req(input$query)
-    #   tableQuery <- dbGetQuery(con, paste0(
-    #     "SELECT
-    #         Experiments.species,
-    #         AllKeywords.keyword,
-    #         ExpContrasts.contrast,
-    #         Experiments.author,
-    #         Experiments.year,
-    #         Experiments.description
-    #     FROM Experiments
-    #     JOIN ExpContrasts ON Experiments.experiment_id = ExpContrasts.experiment_id
-    #     JOIN ExpKeywords AS AllKeywords ON Experiments.experiment_id = AllKeywords.experiment_id
-    #     WHERE Experiments.experiment_id IN (
-    #             SELECT experiment_id
-    #             FROM ExpKeywords
-    #             WHERE keyword = '",input$query,"'
-    #             COLLATE NOCASE
-    #             );"
-    #   ))
-    # 
-    #   # Set the contrast column as clickable links, and combine contrasts into a single cell
-    #   processedTable <- tableQuery %>%
-    #     # mutate contrasts as hyperlinks set to open new tabs
-    #     mutate(hyperlink = paste0( '<a href="#" onclick="Shiny.setInputValue(\'goToTab\', {',
-    #                                'contrast: \'', contrast, '\', ',
-    #                                'author: \'', author, '\', ',
-    #                                'year: ', year, ', ',
-    #                                'description: \'', description, '\', ',
-    #                                'nonce: Math.random()',
-    #                                '}, {priority: \'event\'})">',
-    #                                contrast,
-    #                                '</a>')) %>%
-    #     # groups table where ALL listed values are identical
-    #     group_by(species, author, year, description) %>%
-    #     # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
-    #     summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"),
-    #               keywords = paste(unique(keyword), collapse = "; "),
-    #               .groups = 'drop') %>%
-    #     # sort the order of the columns
-    #     select(species, keywords, contrasts, author, year, description)
-    # 
-    #   # Save the processedTable outside the observeEvent
-    #   queryData(processedTable)
-    # 
-    #   # save specific column names
-    #   colnames(c("Species","Keywords", "Contrasts", "Author", "Year", "Description"))
-    # 
-    #   # save number of columns to hide
-    #   hidden_columns(c(0,1))
-    # 
-    #   # open the Results tab
-    #   showTab("navMenu", target = "Results")
-    #   updateTabsetPanel(session, "navMenu", selected = "Results")
-    # }
-    ### ORIGINAL WORKING CODE TO HERE --------
   })
   
   
@@ -531,18 +372,19 @@ server <- function(input, output, session) {
   
   ## Generate interactive volcano plot
   output$volcanoPlot <- renderPlotly({
-    entire_df <- filteredExpData()
+    entire_df <- experimentData()
+    # entire_df <- filteredExpData()
     # remove empty pval 
     entire_df <- filter(entire_df, !is.na(pval))
       
-    # Set significant values for log2FC and pvalue
+    # Set significant values for log2FC and padj
     if (!is.null(input$lFC) && !is.na(input$lFC)){
       fold <- input$lFC
     } else {
       fold <- 1
     }
-    if (!is.null(input$pvalue) && !is.na(input$pvalue)){
-      pval <- input$pvalue
+    if (!is.null(input$padj) && !is.na(input$padj)){
+      pval <- input$padj
     } else {
       pval <- 0.05
     }
@@ -673,10 +515,24 @@ server <- function(input, output, session) {
       par(bg = "#f5f7fa")
       plot(1, type = "n", axes = FALSE, xlab = "", ylab = "", main = "")
     }
-
+    
+    
 
   })
 
+  # print when point is clicked
+  output$testVolcanoClick <- renderPrint({
+    click <- event_data("plotly_click")
+    if (!is.null(click)){
+      print(click$key)
+    }
+  })
+  # observeEvent({
+  #   # TODO: Get click event working properly
+  #   click <- event_data("plotly_click")
+  #   print("point has been clicked")
+  #   print(click)
+  # })
   
   ## Download button downloads heatmap
   output$exportHeatmap <- downloadHandler(
