@@ -182,8 +182,7 @@ ui <- fluidPage(
                 )
               ),
     nav_panel(title = "Gene Info",
-              br(),
-              textOutput("testGeneInfo"),
+              br(),br(),
               DTOutput("tableGeneInfo")
               )
     )

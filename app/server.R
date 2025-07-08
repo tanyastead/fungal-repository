@@ -105,12 +105,14 @@ server <- function(input, output, session) {
       idQuery$go_func <- as.character(idQuery$go_func)
       idQuery$gene_function <- as.character(idQuery$gene_function)
       
-      
-      # Combine the queries
-      combined_query <- distinct(bind_rows(funcQuery, idQuery))
+      # Combine the queries only if funcQuery returns something
+      if (nrow(funcQuery) > 0){
+        combined_query <- distinct(bind_rows(funcQuery, idQuery))
+      } else{
+        combined_query <- idQuery
+      }
       
       # Set the contrast column as clickable links, and combine contrasts into a single cell
-      ## TODO: If gene_func is NA, remove hyperlink and write <i>Not available</i>
       processedTable <- combined_query %>%
         # mutate contrasts as hyperlinks set to open new tabs.
         mutate(hyperlink = paste0('<a href="#" onclick="Shiny.setInputValue(\'goToTab\', {',
@@ -123,8 +125,13 @@ server <- function(input, output, session) {
                                   contrast,
                                   '</a>')) %>% # priority event forces the hyperlink to work every time it is clicked
         # mutate gene function as hyperlinks set to open go term page
-        mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
-                                      go_func, '" target="_blank">', gene_function, '</a>')) %>%
+        mutate(gene_function = if_else(
+                                  is.na(gene_function),
+                                  '<i>Not available</i>',
+                                  paste0('<a href="https://amigo.geneontology.org/amigo/term/',
+                                      go_func, '" target="_blank">', gene_function, '</a>')
+                                      )) %>%
+        
         # groups table where ALL listed values are identical
         group_by(species, gene_id, go_func, gene_function, author, year, description) %>%
         # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
@@ -249,11 +256,12 @@ server <- function(input, output, session) {
     DT::datatable(filteredData(),
                   rownames = FALSE,
                   colnames = colnames(),
-                  # options = list(
-                  #   columnDefs = list(
-                  #     list(visible = FALSE, targets = hidden_columns())
-                  #     )
-                  #   ), # Hide the unecessary columns
+                  selection = "none",
+                  options = list(
+                    columnDefs = list(
+                      list(visible = FALSE, targets = hidden_columns())
+                      )
+                    ), # Hide the unecessary columns
                   escape = FALSE)
   })
   
@@ -398,6 +406,7 @@ server <- function(input, output, session) {
                   list(visible = FALSE, targets = 0)
                 )
               ),
+              selection = "none",
               escape = FALSE)
   })
   
@@ -459,9 +468,7 @@ server <- function(input, output, session) {
   observeEvent(event_data("plotly_click", source = "volc"), {
     click <- event_data("plotly_click", source = "volc")
     if (!is.null(click)) {
-      output$testGeneInfo <- renderText({
-        click$key
-      })
+
       print(click$key, 
                    # event_data("plotly_click", source="volc")
                    )
@@ -491,7 +498,20 @@ server <- function(input, output, session) {
             '<i>Not available</i>',
             gene_function
           )
-        )
+        )%>%
+        # Group and summarise the table to have all GO terms in a single cell
+        group_by(gene_id, gene_function) %>%
+        summarise(go_term = paste(unique(go_term), collapse = "<br>"), .groups = 'drop')%>%
+        # Reorder the columns to the correct order
+        select(gene_id, go_term, gene_function)
+      
+      
+      # # groups table where ALL listed values are identical
+      # group_by(species, gene_id, go_func, gene_function, author, year, description) %>%
+      #   # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
+      #   summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"),
+      #             keywords = paste(unique(keyword), collapse = "; "),
+      #             .groups = 'drop') %>%
       
       
       geneInfo(processedGeneInfo)
@@ -507,6 +527,8 @@ server <- function(input, output, session) {
     datatable(geneInfo(),
               rownames = FALSE,
               colnames = c("Gene", "GO Term", "Functional Annotation"),
+              selection = "none",
+              options = list(dom = "tip"),
               escape = FALSE)
     
   })
