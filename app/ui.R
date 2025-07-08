@@ -174,12 +174,17 @@ ui <- fluidPage(
                               style = "font-size: 16px; color: #2c3e50; font-weight: 500; margin-bottom: 10px;text-align: center;"
                             ),
                             # textOutput("heatmapText"),
-                            plotOutput("heatmap"))
-                ),
+                            plotOutput("heatmap")),
+                  )
                 # DTOutput("experimentTable"),
                 # textOutput("testMessage"),
                 # verbatimTextOutput("testSearchExpOutput")
                 )
+              ),
+    nav_panel(title = "Gene Info",
+              br(),
+              textOutput("testGeneInfo"),
+              DTOutput("tableGeneInfo")
               )
     )
 )

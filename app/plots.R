@@ -94,6 +94,7 @@ DEG_heatmap <- function(data){
     scale_fill_gradient2(low = "#00AFBB", mid = "grey80", high = "#F8766D", midpoint = 0) +
     theme_light() +
     labs(x = "Contrast", y = "Gene ID", fill = "log2FC") +
+    ggtitle("Gene expression")+
     theme(
       panel.grid.major.x = element_blank(),   # ❌ Remove vertical major gridlines
       # panel.grid.minor.x = element_blank(),   # ❌ Remove vertical minor gridlines

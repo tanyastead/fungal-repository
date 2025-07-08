@@ -9,6 +9,7 @@ server <- function(input, output, session) {
   # hide all unnecessary tabs
   hideTab("navMenu", target = "Results")
   hideTab("navMenu", target = "Experiments")
+  hideTab("navMenu", target = "Gene Info")
   
   queryData <- reactiveVal() # Define a reactive contained to hold the table data
   colnames <- reactiveVal() # define an empty variable to hold column names
@@ -21,6 +22,7 @@ server <- function(input, output, session) {
   experimentData <- reactiveVal()
   heatmap <- reactiveVal()
   volcano <- reactiveVal()
+  geneInfo <- reactiveVal()
   
   # refSpec <- reactiveVal()
   
@@ -46,19 +48,70 @@ server <- function(input, output, session) {
     if (input$term == "Gene (Name or Function)"){
       req(input$query)
       # Query the DB
-      tableQuery <- dbGetQuery(con, paste0("
-            SELECT Genes.species, ExpKeywords.keyword, GeneFunctions.go_term, GeneFunctions_FTS.gene_id, GeneFunctions_FTS.gene_function,
-            GeneContrasts.contrast, Experiments.author,Experiments.year,Experiments.description
-            FROM GeneFunctions_FTS
-            JOIN Genes ON GeneFunctions_FTS.gene_id = Genes.gene_id
-            JOIN GeneFunctions on GeneFunctions_FTS.gene_id = GeneFunctions.gene_id
-            JOIN GeneContrasts ON GeneFunctions_FTS.gene_id = GeneContrasts.gene_id
-            JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
-            JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
-            WHERE GeneFunctions_FTS MATCH '",input$query,"';
-            "))
+      ### original working ---------
+      # tableQuery <- dbGetQuery(con, paste0("
+      #       SELECT Genes.species, ExpKeywords.keyword, GeneFunctions.go_term, GeneFunctions_FTS.gene_id, GeneFunctions_FTS.gene_function,
+      #       GeneContrasts.contrast, Experiments.author,Experiments.year,Experiments.description
+      #       FROM GeneFunctions_FTS
+      #       JOIN Genes ON GeneFunctions_FTS.gene_id = Genes.gene_id
+      #       JOIN GeneFunctions on GeneFunctions_FTS.gene_id = GeneFunctions.gene_id
+      #       JOIN GeneContrasts ON GeneFunctions_FTS.gene_id = GeneContrasts.gene_id
+      #       JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
+      #       JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
+      #       WHERE GeneFunctions_FTS MATCH '",input$query,"';
+      #       "))
+      ### original working ---------
+      funcQuery <- dbGetQuery(con, paste0("
+          SELECT 
+            Genes.species, 
+            ExpKeywords.keyword, 
+            GeneFunctions_FTS.go_func,
+            GeneFunctions_FTS.gene_id, 
+            GeneFunctions_FTS.gene_function,
+            GeneContrasts.contrast, 
+            Experiments.author,
+            Experiments.year,
+            Experiments.description
+          FROM GeneFunctions_FTS
+          JOIN Genes ON GeneFunctions_FTS.gene_id = Genes.gene_id
+          JOIN GeneContrasts ON GeneFunctions_FTS.gene_id = GeneContrasts.gene_id
+          JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
+          JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
+          WHERE 
+            GeneFunctions_FTS MATCH '", input$query, "';
+        "))
+
+      idQuery <- dbGetQuery(con, paste0("
+          SELECT
+            Genes.species,
+            ExpKeywords.keyword,
+            GeneFunctions_FTS.go_func,
+            Genes.gene_id,
+            GeneFunctions_FTS.gene_function,
+            GeneContrasts.contrast,
+            Experiments.author,
+            Experiments.year,
+            Experiments.description
+          FROM Genes
+          LEFT JOIN GeneFunctions_FTS ON Genes.gene_id = GeneFunctions_FTS.gene_id
+          JOIN GeneContrasts ON Genes.gene_id = GeneContrasts.gene_id
+          JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
+          JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
+          WHERE
+            Genes.gene_id = '", input$query, "';
+        "))
+      
+      # idQuery can return genes that do not have a stored function - change NA to string in order to combine queries
+      idQuery$go_func <- as.character(idQuery$go_func)
+      idQuery$gene_function <- as.character(idQuery$gene_function)
+      
+      
+      # Combine the queries
+      combined_query <- distinct(bind_rows(funcQuery, idQuery))
+      
       # Set the contrast column as clickable links, and combine contrasts into a single cell
-      processedTable <- tableQuery %>%
+      ## TODO: If gene_func is NA, remove hyperlink and write <i>Not available</i>
+      processedTable <- combined_query %>%
         # mutate contrasts as hyperlinks set to open new tabs.
         mutate(hyperlink = paste0('<a href="#" onclick="Shiny.setInputValue(\'goToTab\', {',
                                   'contrast: \'', contrast, '\', ',
@@ -71,15 +124,15 @@ server <- function(input, output, session) {
                                   '</a>')) %>% # priority event forces the hyperlink to work every time it is clicked
         # mutate gene function as hyperlinks set to open go term page
         mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
-                                      go_term, '" target="_blank">', gene_function, '</a>')) %>%
+                                      go_func, '" target="_blank">', gene_function, '</a>')) %>%
         # groups table where ALL listed values are identical
-        group_by(species, gene_id, go_term,gene_function, author, year, description) %>%
+        group_by(species, gene_id, go_func, gene_function, author, year, description) %>%
         # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
         summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"),
                   keywords = paste(unique(keyword), collapse = "; "),
                   .groups = 'drop') %>%
         # sort the order of the columns
-        select(species, keywords, go_term, gene_id, gene_function, contrasts, author, year, description)
+        select(species, keywords, go_func, gene_id, gene_function, contrasts, author, year, description)
       
       # Save the processedTable outside the observeEvent
       queryData(processedTable)
@@ -96,6 +149,7 @@ server <- function(input, output, session) {
       
     } else if (input$term == "Keyword") {
       req(input$query)
+      ## TODO: CHECK IF THIS QUERY NEEDS FIXING!!
       tableQuery <- dbGetQuery(con, paste0(
         "SELECT
             Experiments.species,
@@ -195,11 +249,11 @@ server <- function(input, output, session) {
     DT::datatable(filteredData(),
                   rownames = FALSE,
                   colnames = colnames(),
-                  options = list(
-                    columnDefs = list(
-                      list(visible = FALSE, targets = hidden_columns())
-                      )
-                    ), # Hide the unecessary columns
+                  # options = list(
+                  #   columnDefs = list(
+                  #     list(visible = FALSE, targets = hidden_columns())
+                  #     )
+                  #   ), # Hide the unecessary columns
                   escape = FALSE)
   })
   
@@ -241,7 +295,7 @@ server <- function(input, output, session) {
     # Identify possible genes and relevant values based on selected contrast
     geneValues <- dbGetQuery(con, paste0(
       "SELECT 
-        GeneFunctions.go_term,
+        GeneFunctions.go_func,
         GeneContrasts.gene_id, 
         GeneFunctions.gene_function, 
         DEG.log2FC, 
@@ -257,8 +311,9 @@ server <- function(input, output, session) {
     # Hide the go_terms column and set gene_function as hyperlinks
     processedExpTable <- geneValues %>%
       # mutate gene function as hyperlinks set to open go term page
+      ## TODO: If gene_function is NA, write Not Available instead of having hyperlink...
       mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
-                                    go_term, '" target="_blank">', gene_function, '</a>'))
+                                    go_func, '" target="_blank">', gene_function, '</a>'))
       
     # Save the table
     experimentData(processedExpTable)
@@ -396,10 +451,96 @@ server <- function(input, output, session) {
     volcano(p)
     
     # display interactive plot
-    ggplotly(p, tooltip = "text") %>% layout(
-      margin = list(t = 80)  # Increase top margin (default is usually ~50)
-    )
+    p <- ggplotly(p, tooltip = "text", source = "volc") %>% layout(
+      margin = list(t = 80)) #%>% 
+      # event_register("plotly_click")
   })
+  
+  observeEvent(event_data("plotly_click", source = "volc"), {
+    click <- event_data("plotly_click", source = "volc")
+    if (!is.null(click)) {
+      output$testGeneInfo <- renderText({
+        click$key
+      })
+      print(click$key, 
+                   # event_data("plotly_click", source="volc")
+                   )
+      # conduct query
+      geneQuery <- dbGetQuery(con, paste0(
+        "SELECT
+          Genes.gene_id,
+          GeneGo.go_term,
+          GeneFunctions.gene_function
+        FROM Genes
+        LEFT JOIN GeneGo ON Genes.gene_id = GeneGo.gene_id
+        LEFT JOIN GeneFunctions on Genes.gene_id = GeneFunctions.gene_id
+        WHERE Genes.gene_id = '",click$key,"';"
+      ))
+      processedGeneInfo <- geneQuery %>%
+        # mutate go_term to hyperlinks
+        ## TODO: Combine GO terms into single cell
+        mutate(
+          go_term = if_else(
+            is.na(go_term),
+            '<i>Not available</i>',
+            paste0('<a href="https://amigo.geneontology.org/amigo/term/',
+                   go_term, '" target="_blank">', go_term, '</a>')
+            ),
+          gene_function = if_else(
+            is.na(gene_function),
+            '<i>Not available</i>',
+            gene_function
+          )
+        )
+      
+      
+      geneInfo(processedGeneInfo)
+      # open tab
+      showTab("navMenu", target = "Gene Info")
+      updateTabsetPanel(session, "navMenu", selected = "Gene Info")
+    }
+  })
+  
+  output$tableGeneInfo <- renderDataTable({
+    req(geneInfo())
+    
+    datatable(geneInfo(),
+              rownames = FALSE,
+              colnames = c("Gene", "GO Term", "Functional Annotation"),
+              escape = FALSE)
+    
+  })
+  
+  # req(filteredExpData())
+  # 
+  # datatable(filteredExpData(),
+  #           rownames = FALSE,
+  #           colnames = c("GO Term","Gene", "Functional Annotation", HTML("Log<sub>2</sub>-Fold Change"),
+  #                        "Log-Fold Change Standard Error",  HTML("P&#8209;Value"), HTML("P&#8209;Adjusted")),
+  #           options = list(
+  #             columnDefs = list(
+  #               list(visible = FALSE, targets = 0)
+  #             )
+  #           ),
+  #           escape = FALSE)
+  
+  # observeEvent(event_data("plotly_click"), {
+  #   click <- event_data("plotly_click")
+  # 
+  #   if (!is.null(click)) {
+  #     print(click$key)  # For debugging
+  # 
+  #     showTab("navMenu", target = "Gene Info")
+  #     updateTabsetPanel(session, "navMenu", selected = "Gene Info")
+  #   }
+  # })
+  # 
+  # observeEvent({
+  #   # TODO: Get click event working properly
+  #   click <- event_data("plotly_click")
+  #   print("point has been clicked")
+  #   print(click)
+  # })
   
   ## Download button downloads volcano plot
   output$exportVolcano <- downloadHandler(
@@ -426,8 +567,9 @@ server <- function(input, output, session) {
 
   output$heatmap <- renderPlot({
     ##TODO: Set log2FC scale to static???
-
+    ## TODO: Change GeneFunctions!!!
     # Execute DB search
+    ## TODO: Check if this needs to be fixed to align with new schema
     all_DEGs <- dbGetQuery(con, paste0(
       "SELECT
         GeneContrasts.gene_id,
@@ -522,19 +664,7 @@ server <- function(input, output, session) {
 
   })
 
-  # print when point is clicked
-  output$testVolcanoClick <- renderPrint({
-    click <- event_data("plotly_click")
-    if (!is.null(click)){
-      print(click$key)
-    }
-  })
-  # observeEvent({
-  #   # TODO: Get click event working properly
-  #   click <- event_data("plotly_click")
-  #   print("point has been clicked")
-  #   print(click)
-  # })
+
   
   ## Download button downloads heatmap
   output$exportHeatmap <- downloadHandler(
