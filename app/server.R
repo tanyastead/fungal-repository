@@ -1,16 +1,18 @@
 # server.R
 server <- function(input, output, session) {
+
   # Cleanly close the DB connection on ending the session
   session$onSessionEnded(function() {
     dbDisconnect(con)
   })
   
-  ## Setup the initial state
-  # hide all unnecessary tabs
+  # ---- INITIAL SETUP ----
+  ## ---- Hide Tabs ----
   hideTab("navMenu", target = "Results")
   hideTab("navMenu", target = "Experiments")
   hideTab("navMenu", target = "Gene Info")
   
+  ## ---- Define reactiveVal() ----
   queryData <- reactiveVal() # Define a reactive contained to hold the table data
   colnames <- reactiveVal() # define an empty variable to hold column names
   hidden_columns <- reactiveVal() # which columns to hide
@@ -23,10 +25,12 @@ server <- function(input, output, session) {
   heatmap <- reactiveVal()
   volcano <- reactiveVal()
   geneInfo <- reactiveVal()
+  resultsConditionButtonIconToggle <- reactiveVal(FALSE)
+  expFunctionButtonIconToggle <- reactiveVal(FALSE)
   
-  # refSpec <- reactiveVal()
+
   
-  ## SEARCH TAB
+  # ---- SEARCH TAB ----
   ## Search bar queries DB and returns table of results
   observeEvent(input$search, {
     ## Clear any previously inputted values in side panels
@@ -44,11 +48,11 @@ server <- function(input, output, session) {
     updateNumericInput(session, "lFC", value = NA)
     updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
     
-    ### COMBINING GENEID AND GENE FUNCTION SEARCH
+    ## ---- Gene (Name or Function) selected ----
     if (input$term == "Gene (Name or Function)"){
       req(input$query)
       # Query the DB
-      ### original working ---------
+      ### original working 
       # tableQuery <- dbGetQuery(con, paste0("
       #       SELECT Genes.species, ExpKeywords.keyword, GeneFunctions.go_term, GeneFunctions_FTS.gene_id, GeneFunctions_FTS.gene_function,
       #       GeneContrasts.contrast, Experiments.author,Experiments.year,Experiments.description
@@ -60,7 +64,7 @@ server <- function(input, output, session) {
       #       JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
       #       WHERE GeneFunctions_FTS MATCH '",input$query,"';
       #       "))
-      ### original working ---------
+      ### original working 
       funcQuery <- dbGetQuery(con, paste0("
           SELECT 
             Genes.species, 
@@ -154,7 +158,8 @@ server <- function(input, output, session) {
       showTab("navMenu", target = "Results")
       updateTabsetPanel(session, "navMenu", selected = "Results")
       
-    } else if (input$term == "Keyword") {
+    ## ---- Condition selected ----  
+    } else if (input$term == "Condition") {
       req(input$query)
       ## TODO: CHECK IF THIS QUERY NEEDS FIXING!!
       tableQuery <- dbGetQuery(con, paste0(
@@ -213,9 +218,27 @@ server <- function(input, output, session) {
     
   })
   
+  # ---- RESULTS TAB ----
+  ## ---- Update  results sidepanel refine species and condition ----
+  observeEvent(input$search, {
+    req(queryData())
+    data <- queryData()
+    
+    # Update refineSpecies
+    updateSelectizeInput(session,
+                         "refineSpecies",
+                         choices = unique(data$species),
+                         server = TRUE)
+    
+    # Update refineCondition
+    keywords <- unique(str_split(data$keywords, "; "))
+    updateSelectizeInput(session,
+                         "refineCondition",
+                         choices = keywords,
+                         server = TRUE)
+  })
   
-  ## RESULTS TAB
-  ## Refine the query table
+  ## ---- Refine/filter query table ----
   filteredData <- reactive({
     req(queryData())
     
@@ -238,18 +261,27 @@ server <- function(input, output, session) {
     
     # Filter based on keyword
     if (!is.null(input$refineCondition)){
-      keyword_pattern <- str_c(input$refineCondition, collapse = "|")
-      data <- data %>%
-        filter(str_detect(keywords, regex(keyword_pattern, ignore_case = TRUE)))
-      # output$speciesMessage <- renderText(paste0("species has been redifned to: ", (input$refineCondition)))
-      
+      terms <- input$refineCondition
+
+      if (input$resultsConditionLogic == "OR") {
+        keyword_pattern <- str_c(terms, collapse = "|")
+        data <- data %>%
+          filter(str_detect(keywords, regex(keyword_pattern, ignore_case = TRUE)))
+        
+      } else if (input$resultsConditionLogic == "AND") {
+        data <- data %>%
+          filter(
+            map_lgl(keywords, function(k) {
+              all(str_detect(k, regex(terms, ignore_case = TRUE)))
+            })
+          )
+      }
     }
-    # output$troubleshootingCondition <- renderPrint(data$keywords)
+
     return(data)
   })
   
-  
-  ## Render the query table in the results tab
+  ## ---- Render query table ----
   output$tableData <- DT::renderDataTable({
     req(filteredData())
     
@@ -265,7 +297,27 @@ server <- function(input, output, session) {
                   escape = FALSE)
   })
   
-  ## Clear button resets side panel values
+
+  
+  ## ---- Define Condition toggle logic ----
+  observeEvent(input$resultsConditionToggle, {
+    shinyjs::toggle(id = "resultsConditionLogicBox") 
+    state <- !resultsConditionButtonIconToggle()
+    resultsConditionButtonIconToggle(state)
+    
+    if (state == FALSE){
+      icon <- icon("chevron-down")
+    } else {
+      icon <- icon("chevron-up")
+    }
+    
+    updateActionButton(session = session,
+                       "resultsConditionToggle",
+                       icon = icon)
+  })
+  
+  
+  ## ---- Clear button to reset side panel values ----
   observeEvent(input$clearResults, {
     updateSelectizeInput(session, "refineSpecies", selected = character(0))
     updateSelectizeInput(session, "refineCondition", selected = character(0))
@@ -273,7 +325,7 @@ server <- function(input, output, session) {
     updateTextInput(session, "toYear", value = "")
   })
   
-  ## Export button downloads table
+  ## ---- Export button downloads table ----
   output$exportResults <- downloadHandler(
     filename = function() {
       paste0(input$query, "_", 
@@ -285,9 +337,8 @@ server <- function(input, output, session) {
     }
   )
   
-  
-  ## EXPERIMENTS TAB
-  ## Navigate to the experiments tab when a contrast is clicked
+  # ---- EXPERIMENTS TAB ----
+  ## ---- Navigate to the experiments tab when a contrast is clicked ----
   observeEvent(input$goToTab, {
     # save the name of the selected contrast, author and year
     selectedContrast(input$goToTab$contrast)
@@ -320,8 +371,11 @@ server <- function(input, output, session) {
     processedExpTable <- geneValues %>%
       # mutate gene function as hyperlinks set to open go term page
       ## TODO: If gene_function is NA, write Not Available instead of having hyperlink...
-      mutate(gene_function = paste0('<a href="https://amigo.geneontology.org/amigo/term/',
-                                    go_func, '" target="_blank">', gene_function, '</a>'))
+      mutate(gene_function = if_else(
+        is.na(gene_function),
+        '<i>Not available</i>',
+        paste0('<a href="https://amigo.geneontology.org/amigo/term/',
+                                    go_func, '" target="_blank">', gene_function, '</a>')))
       
     # Save the table
     experimentData(processedExpTable)
@@ -341,7 +395,24 @@ server <- function(input, output, session) {
     #TODO: Does anything else in the side panel need to be refined/cleared at this step??
   })
   
-  ## Refine the Experiments table
+  ## ---- Define Function toggle logic ----
+  observeEvent(input$expFunctionToggle, {
+    shinyjs::toggle(id = "expFunctionLogicBox") 
+    state <- !expFunctionButtonIconToggle()
+    expFunctionButtonIconToggle(state)
+    
+    if (state == FALSE){
+      icon <- icon("chevron-down")
+    } else {
+      icon <- icon("chevron-up")
+    }
+    
+    updateActionButton(session = session,
+                       "expFunctionToggle",
+                       icon = icon)
+  })
+  
+  ## ---- Refine the Experiments table ----
   filteredExpData <- reactive({
     req(experimentData())
     data <- experimentData()
@@ -357,10 +428,19 @@ server <- function(input, output, session) {
     }
     # Filter based on function
     if (!is.null(input$refineFunctionExp) && length(input$refineFunctionExp) > 0) {
-      data <- data %>%
-        filter(reduce(input$refineFunctionExp, 
-                      ~ .x | str_detect(gene_function, fixed(.y, ignore_case = TRUE)),
-                      .init = FALSE))
+      
+      if (input$expFunctionLogic == "AND"){
+        data <- data %>%
+          filter(reduce(input$refineFunctionExp, 
+                        ~ .x & str_detect(gene_function, fixed(.y, ignore_case = TRUE)),
+                        .init = TRUE))
+      } else if (input$expFunctionLogic == "OR"){
+        data <- data %>%
+          filter(reduce(input$refineFunctionExp, 
+                        ~ .x | str_detect(gene_function, fixed(.y, ignore_case = TRUE)),
+                        .init = FALSE))
+      }
+      
     }
     # Filter based on pval
     if (!is.null(input$pvalue) && !is.na(input$pvalue)){
@@ -393,7 +473,7 @@ server <- function(input, output, session) {
   #   paste0("placeholder, typeof:",typeof(input$testSearchExp), " stored: ", input$testSearchExp)
   # })
 
-  # ## Render the experiment table in the experiments tab
+  ## ---- Render the experiment table in the experiments tab ----
   output$experimentTable <- renderDataTable({
     req(filteredExpData())
 
@@ -410,7 +490,7 @@ server <- function(input, output, session) {
               escape = FALSE)
   })
   
-  ## Download button downloads table
+  ## ---- Download button downloads table ----
   output$exportExpTable <- downloadHandler(
     filename = function() {
       paste0(selectedContrast(), "_", 
@@ -424,7 +504,7 @@ server <- function(input, output, session) {
     }
   )
   
-  ## Clear button resets side panel values
+  ## ---- Clear button resets side panel values ----
   observeEvent(input$clearExperiments, {
     updateSelectizeInput(session, "refineGene", selected = character(0))
     updateSelectizeInput(session, "refineFunctionExp", choices = NULL, selected = NULL, server = TRUE)
@@ -434,7 +514,7 @@ server <- function(input, output, session) {
     updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
   })
   
-  ## Generate interactive volcano plot
+  ## ---- Generate interactive volcano plot ----
   output$volcanoPlot <- renderPlotly({
     entire_df <- experimentData()
     # entire_df <- filteredExpData()
@@ -465,6 +545,7 @@ server <- function(input, output, session) {
       # event_register("plotly_click")
   })
   
+  ## ---- Open the Gene Info tab when a point is clicked on the volcano plot ----
   observeEvent(event_data("plotly_click", source = "volc"), {
     click <- event_data("plotly_click", source = "volc")
     if (!is.null(click)) {
@@ -521,6 +602,7 @@ server <- function(input, output, session) {
     }
   })
   
+  ## ---- Render the Gene Info data table ----
   output$tableGeneInfo <- renderDataTable({
     req(geneInfo())
     
@@ -533,38 +615,8 @@ server <- function(input, output, session) {
     
   })
   
-  # req(filteredExpData())
-  # 
-  # datatable(filteredExpData(),
-  #           rownames = FALSE,
-  #           colnames = c("GO Term","Gene", "Functional Annotation", HTML("Log<sub>2</sub>-Fold Change"),
-  #                        "Log-Fold Change Standard Error",  HTML("P&#8209;Value"), HTML("P&#8209;Adjusted")),
-  #           options = list(
-  #             columnDefs = list(
-  #               list(visible = FALSE, targets = 0)
-  #             )
-  #           ),
-  #           escape = FALSE)
   
-  # observeEvent(event_data("plotly_click"), {
-  #   click <- event_data("plotly_click")
-  # 
-  #   if (!is.null(click)) {
-  #     print(click$key)  # For debugging
-  # 
-  #     showTab("navMenu", target = "Gene Info")
-  #     updateTabsetPanel(session, "navMenu", selected = "Gene Info")
-  #   }
-  # })
-  # 
-  # observeEvent({
-  #   # TODO: Get click event working properly
-  #   click <- event_data("plotly_click")
-  #   print("point has been clicked")
-  #   print(click)
-  # })
-  
-  ## Download button downloads volcano plot
+  ## ---- Download button downloads volcano plot ----
   output$exportVolcano <- downloadHandler(
     filename = function() {
       paste0(selectedContrast(), "_", 
@@ -586,7 +638,7 @@ server <- function(input, output, session) {
   )
   
  
-
+  ## ---- Generate heatmap ----
   output$heatmap <- renderPlot({
     ##TODO: Set log2FC scale to static???
     ## TODO: Change GeneFunctions!!!
@@ -618,17 +670,29 @@ server <- function(input, output, session) {
     }
     # Filter based on function
     if (!is.null(input$refineFunctionExp) && length(input$refineFunctionExp) > 0) {
-      filtered_genes <- filtered_genes %>%
-        filter(reduce(input$refineFunctionExp,
-                      ~ .x | str_detect(gene_function, fixed(.y, ignore_case = TRUE)),
-                      .init = FALSE))
+      
+      if (input$expFunctionLogic == "AND"){
+        filtered_genes <- filtered_genes %>%
+          filter(reduce(input$refineFunctionExp, 
+                        ~ .x & str_detect(gene_function, fixed(.y, ignore_case = TRUE)),
+                        .init = TRUE))
+      } else if (input$expFunctionLogic == "OR"){
+        filtered_genes <- filtered_genes %>%
+          filter(reduce(input$refineFunctionExp, 
+                        ~ .x | str_detect(gene_function, fixed(.y, ignore_case = TRUE)),
+                        .init = FALSE))
+      }
+      
     }
+    # Filter based on p-value
     if (!is.null(input$pvalue) && !is.na(input$pvalue)){
       filtered_genes <- filter(filtered_genes, pval < input$pvalue)
     }
+    # Filter based on p-adjusted value
     if (!is.null(input$padj) && !is.na(input$padj)){
       filtered_genes <- filter(filtered_genes, padj < input$padj)
     }
+    # Filter based on log fold change
     if (!is.null(input$lFC) && !is.na(input$lFC)){
       if (input$lFCRegulation == "Up- or Downregulated"){
         filtered_genes <- filter(filtered_genes, log2FC >= input$lFC | log2FC <= -input$lFC)
@@ -687,8 +751,7 @@ server <- function(input, output, session) {
   })
 
 
-  
-  ## Download button downloads heatmap
+  ## ---- Download button downloads heatmap ----
   output$exportHeatmap <- downloadHandler(
     filename = function() {
       paste0(selectedContrast(), "_", 

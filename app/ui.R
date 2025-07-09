@@ -1,19 +1,15 @@
 # ui.R
 ui <- fluidPage(
+  useShinyjs(), 
   # theme = my_theme,
   tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
   ),
   titlePanel("Fungal Transcriptomic Database"),
   navset_tab(id = "navMenu",
+ # ---- Search Tab ----
     nav_panel(title = "Search",
-              #TODO: move the search section to the middle of the page!
               br(), br(),
-              # fluidRow(
-              #     column(4, textInput("query", NULL, placeholder = "Enter search text...")),
-              #     column(4, selectInput("term", NULL, choices = c("Gene (Name or Function)", "Keyword"))),
-              #     column(4, actionButton("search", "Search"))
-              #     )
               fluidRow(column(8, offset = 2,
                                   # Horizontal alignment using flexbox
                                   div(style = "display: flex; justify-content: space-between; align-items: center;",
@@ -24,7 +20,7 @@ ui <- fluidPage(
                                       # Select Input
                                       div(style = "flex: 2; padding: 0 10px;margin-top: 15px;",
                                           selectInput("term", NULL,
-                                                      choices = c("Gene (Name or Function)", "Keyword"),
+                                                      choices = c("Gene (Name or Function)", "Condition"),
                                                       width = "100%")
                                       ),
                                       # Search Button aligned using margin-top
@@ -39,25 +35,49 @@ ui <- fluidPage(
                               
                               # Add text underneath the line
                               div(style = "text-align: center; color: #555; font-style: italic;",
-                                  "Search by gene ID, gene function or experiment keywords (e.g. temperature)"
+                                  "Search by gene ID, gene function or experimental condition (e.g. temperature)"
                               )
                               
               ))
               ),
+ # ---- Results Tab ----
     nav_panel(title = "Results", 
-              p("Second tab content."),
               sidebarPanel(
                 strong("Refine output:"),
-                selectizeInput("refineSpecies", 
-                               NULL, 
-                               choices = queriedSpecies$species, 
-                               multiple = TRUE, 
+                selectizeInput("refineSpecies",
+                               NULL,
+                               choices = NULL,
+                               multiple = TRUE,
                                options = list(placeholder = "Enter species...")),
-                selectizeInput("refineCondition", 
-                               NULL, 
-                               choices = keywords, 
-                               multiple = TRUE, 
-                               options = list(placeholder = "Enter condition...")),
+
+                
+                
+                # selectizeInput("refineCondition",
+                #                NULL,
+                #                choices = NULL,
+                #                multiple = TRUE,
+                #                options = list(placeholder = "Enter condition...")),
+                # actionButton("toggle_logic", label = "", icon = icon("chevron-down")),
+                div(style = "display: flex; align-items: center; gap: 10px;",
+                    div(style = "flex-grow: 1;",
+                        selectizeInput("refineCondition",
+                                       NULL,
+                                       choices = NULL,
+                                       multiple = TRUE,
+                                       options = list(placeholder = "Enter condition..."))
+                    ),
+                    actionButton("resultsConditionToggle", label = NULL, icon = icon("chevron-down"),
+                                 style = "margin-top: -15px;")
+                ),
+                hidden(
+                  div(id = "resultsConditionLogicBox",
+                      tags$label("Search logic:", style = "font-weight: normal;"),
+                      radioButtons("resultsConditionLogic",
+                                   label = NULL,
+                                   choices = c("AND", "OR"),
+                                   inline = TRUE)
+                  )
+                ),
                 br(),
                 tags$h6("From:"),
                 textInput("fromYear", NULL, placeholder = "Year..."),
@@ -77,6 +97,7 @@ ui <- fluidPage(
                 # verbatimTextOutput("troubleshootingCondition")
               )
             ),
+# ---- Experiments Tab ----
     nav_panel(title = "Experiments",
               fluidRow(
                 column(
@@ -90,6 +111,7 @@ ui <- fluidPage(
                   )
                 )
               ),
+## ---- Experiments Sidebar ----
               sidebarPanel(
                 strong("Refine output:"),
                 selectizeInput("refineGene",
@@ -98,9 +120,33 @@ ui <- fluidPage(
                                multiple = TRUE,
                                options = list(placeholder = "Enter gene name...")),
                 # refine output - gene function??
-                selectizeInput("refineFunctionExp", 
-                               NULL, choices = NULL, multiple = TRUE, 
-                               options = list(create = TRUE, placeholder = "Enter functional annotation...")),
+                # selectizeInput("refineFunctionExp", 
+                #                NULL, choices = NULL, multiple = TRUE, 
+                #                options = list(create = TRUE, placeholder = "Enter functional annotation...")),
+                
+                
+                
+                div(style = "display: flex; align-items: center; gap: 10px;",
+                    div(style = "flex-grow: 1;",
+                        selectizeInput("refineFunctionExp", 
+                                       NULL, choices = NULL, multiple = TRUE, 
+                                       options = list(create = TRUE, placeholder = "Enter functional annotation..."))
+                    ),
+                    actionButton("expFunctionToggle", label = NULL, icon = icon("chevron-down"),
+                                 style = "margin-top: -15px;")
+                ),
+                hidden(
+                  div(id = "expFunctionLogicBox",
+                      tags$label("Search logic:", style = "font-weight: normal;"),
+                      radioButtons("expFunctionLogic",
+                                   label = NULL,
+                                   choices = c("AND", "OR"),
+                                   inline = TRUE)
+                  )
+                ),
+                
+                
+                
                 numericInput("pvalue",
                              "p-value <",
                              value = NULL,
@@ -127,6 +173,8 @@ ui <- fluidPage(
               ),
               mainPanel(
                 navset_card_underline(
+                  
+## ---- Experiments Data Table Sub-Tab ----
                   nav_panel("Data Table", 
                             # actionButton("exportExpTable", "Export Table", icon = icon("download"))
                             tags$div(
@@ -142,7 +190,8 @@ ui <- fluidPage(
                             br(),
                             DTOutput("experimentTable")),
                             br(),
-                            
+
+## ---- Experiments Volcano Plot Sub-Tab ----                            
                   nav_panel("Volcano Plot",
                             # actionButton("exportVolcano", "Export Plot", icon = icon("download")),
                             tags$div(
@@ -158,6 +207,8 @@ ui <- fluidPage(
                             plotlyOutput("volcanoPlot"),
                             verbatimTextOutput("testVolcanoClick")
                             ),
+
+## ---- Experiments Expression Heatmap Sub-Tab ----
                   nav_panel("Expression Heatmap",
                             tags$div(
                               style = "text-align: right;",
@@ -181,6 +232,7 @@ ui <- fluidPage(
                 # verbatimTextOutput("testSearchExpOutput")
                 )
               ),
+# ---- Gene Info Tab ----
     nav_panel(title = "Gene Info",
               br(),br(),
               DTOutput("tableGeneInfo")
