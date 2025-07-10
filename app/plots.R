@@ -1,40 +1,58 @@
 # File to store functions used to create plots in main app
 
 # Interactive Volcano plot function
-interactive_volcano <- function(data, lFC, pv, cont){
+interactive_volcano <- function(data, lFC, pv, cont, pmetric){
   # 1. subset the df to obtain just the gene name, log2FC and padj
-  subset_df <- data[c("gene_id", "log2FC", "padj", "gene_function")]
+  subset_df <- data[c("gene_id", "log2FC", "padj", "pval", "gene_function")]
   
   # 1.5 convert the gene_function from hyperlinks into plain text
   subset_df$gene_function_plain <- sapply(subset_df$gene_function, function(html) {
     xml_text(read_html(html))
   })
   
+  # 1.8 save proper pmetric name
+  if (pmetric == "pval"){
+    metric <- "p-value"
+  } else if (pmetric == "padj"){
+    metric <- "p-adjusted"
+  }
+  
   # 2. Add a column to say if genes are up, down, or not differentially expressed
   subset_df$diffexpressed <- "Not significant"
-  subset_df$diffexpressed[subset_df$log2FC > lFC & subset_df$padj < pv] <- "Upregulated"
-  subset_df$diffexpressed[subset_df$log2FC < -lFC & subset_df$padj < pv] <- "Downregulated"
+  subset_df$diffexpressed[subset_df$log2FC > lFC & subset_df[[pmetric]] < pv] <- "Upregulated"
+  subset_df$diffexpressed[subset_df$log2FC < -lFC & subset_df[[pmetric]] < pv] <- "Downregulated"
   
-  # 3. Add a column calculating -log10(padj)
-  subset_df$neg_log10_padj <- -log10(subset_df$padj)
+  # 3. Add a column calculating -log10(pmetric)
+  subset_df$neg_log10_pmetric <- -log10(subset_df[[pmetric]])
   
-  # 4. Create a cap at the 95th percentile for neg_log10_padj values
-  subset_df$neg_log10_padj[is.infinite(subset_df$neg_log10_padj)] <- NA  # temporarily remove for percentile calc
-  y_cap <- quantile(subset_df$neg_log10_padj, 0.95, na.rm = TRUE)  # calculate 95th percentile value
-  subset_df$neg_log10_padj[is.na(subset_df$neg_log10_padj)] <- y_cap #replace na values with y_cap
+  # 4. Create a cap at the 95th percentile for neg_log10_pmetric values
+  subset_df$neg_log10_pmetric[is.infinite(subset_df$neg_log10_pmetric)] <- NA  # temporarily remove for percentile calc
+  y_cap <- quantile(subset_df$neg_log10_pmetric, 0.995, na.rm = TRUE)  # calculate 95th percentile value
+  subset_df$neg_log10_pmetric[is.na(subset_df$neg_log10_pmetric)] <- y_cap #replace na values with y_cap
   
+  # 5. Calculate logFC 95th percentile for logFC
+  lfc_95 <- quantile(abs(subset_df$log2FC), 0.995, na.rm = TRUE)
+  
+  print(paste0("ycap: ", y_cap, " lfc95: ", lfc_95))
+  
+  # 6. Calculate outliers
+  subset_df$outliers <- ifelse(subset_df$neg_log10_pmetric >= y_cap & abs(subset_df$log2FC) >= lfc_95,
+                               paste(subset_df$gene_id),
+                               NA)
+  # paste0("Gene: ", gene_id, "<br>",
+  #        "Functional annotation: ", gene_function_plain)
   # 5. Determine the y-axis limit
   # if(max(-log10(subset_df$pval)) == Inf){
   #   y_axis_lim <- y_cap
   # } else {
   #   y_axis_lim <- max(-log10(subset_df$pval))
   # }
-  y_axis_lim <- max(subset_df$neg_log10_padj, na.rm = TRUE)
+  y_axis_lim <- max(subset_df$neg_log10_pmetric, na.rm = TRUE)
   
   # Create the plot
   plot <- ggplot(data = subset_df, 
                  aes(x = log2FC, 
-                     y = neg_log10_padj, 
+                     y = neg_log10_pmetric, 
                      col = diffexpressed, 
                      # text = paste0("Gene: ", gene_id,"<br>",
                      #               "Expression: ", diffexpressed,"<br>",
@@ -49,14 +67,14 @@ interactive_volcano <- function(data, lFC, pv, cont){
     annotate("text",
              x = max(subset_df$log2FC),
              y = -log10(pv),
-             label = paste0("p-adjusted:\n", pv),
+             label = paste0(metric,":\n", pv),
              hjust = 1.1,
              vjust = -0.5,
              size = 2,
              color = "black")+
     geom_point(size = 1) +
     scale_color_manual(
-      values = c("Downregulated" = "#00AFBB", "Not significant" = "grey", "Upregulated" = "#F8766D"),
+      values = c("Downregulated" = "blue", "Not significant" = "grey", "Upregulated" = "red"),
       labels = c("Downregulated" = "Downregulated", "Not significant" = "Not significant", "Upregulated" = "Upregulated")
     ) + # to set the labels 
     coord_cartesian(
@@ -67,8 +85,11 @@ interactive_volcano <- function(data, lFC, pv, cont){
     labs(color = 'Expression', #legend_title, 
          x = "log2 Fold Change", y = "-log10 p-value") +
     ggtitle(paste0("Volcano plot of contrast ", cont, "\n",
-                   "log fold change = ", lFC, " and p-adjusted = ", pv)) +
+                   "log fold change = ", lFC, " and ", metric, " = ", pv)) +
     theme(axis.text.x = element_text(size = 8),  plot.title = element_text(size = 10)) +
+    ## working code, just not sure if this is how i want to identify and label outliers...
+    # geom_text(aes(label = outliers), vjust = -1)+
+    
     # scale_y_continuous(
     #   name = "-log10(p-adj)",
     #   sec.axis = sec_axis(
@@ -80,18 +101,25 @@ interactive_volcano <- function(data, lFC, pv, cont){
     # )+
     scale_x_continuous(breaks = seq(floor(min(subset_df$log2FC)), ceiling(max(subset_df$log2FC)), 2)) # to customise the breaks in the x axis
   
-  # print(subset_df)
-  # print(max(-log10(subset_df$pval)))
-  # print(min(-log10(subset_df$pval)))
   
   return(plot)
 }
 
 # Gene Expression Heatmap function
 DEG_heatmap <- function(data){
-  plot <- ggplot(data, aes(x = contrast, y = gene_id, fill = log2FC)) +
+  data$customdata <- data$gene_id
+  plot <- ggplot(data, aes(x = contrast, 
+                           y = gene_id, 
+                           fill = log2FC, 
+                           text = paste0("Gene: ", gene_id, "<br>",
+                                          "Functional annotation: ", gene_function, "<br>",
+                                         "Log fold change: ", log2FC),
+                           key = gene_id,
+                           customdata = gene_id,
+                           group = gene_id
+                           )) +
     geom_tile() +
-    scale_fill_gradient2(low = "#00AFBB", mid = "grey80", high = "#F8766D", midpoint = 0) +
+    scale_fill_gradient2(low = "#00AFBB", mid = "grey85", high = "#F8766D", midpoint = 0) +
     theme_light() +
     labs(x = "Contrast", y = "Gene ID", fill = "log2FC") +
     ggtitle("Gene expression")+
@@ -99,9 +127,57 @@ DEG_heatmap <- function(data){
       panel.grid.major.x = element_blank(),   # ❌ Remove vertical major gridlines
       # panel.grid.minor.x = element_blank(),   # ❌ Remove vertical minor gridlines
       panel.grid.major.y = element_line(color = "grey80"),  # ✅ Keep horizontal gridlines
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      axis.text.y = element_text(size = 10)
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
+      axis.text.y = element_text(size = 7)
     )
   return(plot)
 }
 
+
+# Create plotly heatmap
+plotly_DEG_heatmap <- function(data){
+  # Set the min and max values for the colour scale
+  if (any(data$log2FC < -1)){
+    zmin <- min(data$log2FC)
+  } else {
+    zmin <- -10
+  }
+  
+  if (any(data$log2FC > 1)){
+    zmax <- max(data$log2FC)
+  } else {
+    zmax <- 10
+  }
+  
+  zmid <- 0
+  midpoint <- (zmid - zmin) / (zmax - zmin)
+  
+  plot <- plot_ly(
+    data = data,
+    x = ~contrast,
+    y = ~gene_id,
+    z = ~log2FC,
+    type = "heatmap",
+    zmin = zmin,
+    zmax = zmax,
+    colorscale = list(
+      list(zmin, "blue"),
+      list(midpoint, "grey"),
+      list(zmax, "red")
+    ),
+    text = ~paste0(
+      "Gene: ", gene_id, "<br>",
+      "Function: ", gene_function, "<br>",
+      "Log fold change: ", round(log2FC, 3)
+    ),
+    customdata = ~gene_id,
+    hoverinfo = "text",
+    source = "heat",
+    colorbar = list(title = list(text = "Log<sub>2</sub> fold change"))
+  ) %>%
+    layout(title = "Gene Expression", 
+           xaxis = list(title = "Contrast"), 
+           yaxis = list(title = "Gene ID")
+           # legend = list(title=list(text='<br> Log fold change <br>'))
+           ) 
+}

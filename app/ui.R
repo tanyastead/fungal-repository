@@ -42,6 +42,7 @@ ui <- fluidPage(
               ),
  # ---- Results Tab ----
     nav_panel(title = "Results", 
+              br(),
               sidebarPanel(
                 strong("Refine output:"),
                 selectizeInput("refineSpecies",
@@ -225,7 +226,7 @@ ui <- fluidPage(
                               style = "font-size: 16px; color: #2c3e50; font-weight: 500; margin-bottom: 10px;text-align: center;"
                             ),
                             # textOutput("heatmapText"),
-                            plotOutput("heatmap")),
+                            plotlyOutput("heatmap")),
                   )
                 # DTOutput("experimentTable"),
                 # textOutput("testMessage"),

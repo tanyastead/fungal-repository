@@ -27,6 +27,7 @@ server <- function(input, output, session) {
   geneInfo <- reactiveVal()
   resultsConditionButtonIconToggle <- reactiveVal(FALSE)
   expFunctionButtonIconToggle <- reactiveVal(FALSE)
+  heatmapPlotData <- reactiveVal()
   
 
   
@@ -132,8 +133,13 @@ server <- function(input, output, session) {
         mutate(gene_function = if_else(
                                   is.na(gene_function),
                                   '<i>Not available</i>',
-                                  paste0('<a href="https://amigo.geneontology.org/amigo/term/',
-                                      go_func, '" target="_blank">', gene_function, '</a>')
+                                  if_else(
+                                    !is.na(go_func),
+                                    paste0('<a href="https://amigo.geneontology.org/amigo/term/', go_func, '" target="_blank">', gene_function, '</a>'),
+                                    gene_function
+                                  )
+                                  # paste0('<a href="https://amigo.geneontology.org/amigo/term/',
+                                  #     go_func, '" target="_blank">', gene_function, '</a>')
                                       )) %>%
         
         # groups table where ALL listed values are identical
@@ -374,9 +380,14 @@ server <- function(input, output, session) {
       mutate(gene_function = if_else(
         is.na(gene_function),
         '<i>Not available</i>',
-        paste0('<a href="https://amigo.geneontology.org/amigo/term/',
-                                    go_func, '" target="_blank">', gene_function, '</a>')))
+        if_else(
+          !is.na(go_func),
+          paste0('<a href="https://amigo.geneontology.org/amigo/term/', go_func, '" target="_blank">', gene_function, '</a>'),
+          gene_function
+        )
+        ))
       
+
     # Save the table
     experimentData(processedExpTable)
     
@@ -487,7 +498,9 @@ server <- function(input, output, session) {
                 )
               ),
               selection = "none",
-              escape = FALSE)
+              escape = FALSE) %>%
+      formatRound(columns=c('log2FC', 'lfcSE'), digits=3) %>%
+      formatSignif(columns = c("pval", "padj"), digits = 4)
   })
   
   ## ---- Download button downloads table ----
@@ -514,27 +527,43 @@ server <- function(input, output, session) {
     updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
   })
   
+  ## ---- reactive vals for volcano plot ----
+  removedCols <- reactiveVal(0)
+  
   ## ---- Generate interactive volcano plot ----
   output$volcanoPlot <- renderPlotly({
     entire_df <- experimentData()
     # entire_df <- filteredExpData()
-    # remove empty pval 
+    # remove empty pval and padj
+    entire_df <- filter(entire_df, !is.na(padj))
     entire_df <- filter(entire_df, !is.na(pval))
+    
+    # Check if rows do not contain a padj but do contain a pval, to determine which metric should be used to build the volcano plot
+    if (any(entire_df$padj == 0 & entire_df$pval != 0)) {
+      pMetric <- "pval"
+    } else {
+      pMetric <- "padj"
+    }
+
       
-    # Set significant values for log2FC and padj
+    # Set significant values for log2FC and padj/pval
     if (!is.null(input$lFC) && !is.na(input$lFC)){
       fold <- input$lFC
     } else {
       fold <- 1
     }
-    if (!is.null(input$padj) && !is.na(input$padj)){
-      pval <- input$padj
+
+    if (!is.null(input[[pMetric]]) && !is.na(input[[pMetric]])){
+      pval <- input[[pMetric]]
     } else {
       pval <- 0.05
     }
     
+    
+
+    ## TODO: pass pMetric to the function to set plot title and horizotnal text
     # create ggplot volcano plot
-    p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval, cont = selectedContrast())
+    p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval, cont = selectedContrast(), pmetric = pMetric)
     
     # save plot so it can be downloaded
     volcano(p)
@@ -543,6 +572,9 @@ server <- function(input, output, session) {
     p <- ggplotly(p, tooltip = "text", source = "volc") %>% layout(
       margin = list(t = 80)) #%>% 
       # event_register("plotly_click")
+    
+    ## not sure if having p here does anything - plotly click warning still displayed, and without it heatmap anyways renders...
+    p
   })
   
   ## ---- Open the Gene Info tab when a point is clicked on the volcano plot ----
@@ -553,6 +585,8 @@ server <- function(input, output, session) {
       print(click$key, 
                    # event_data("plotly_click", source="volc")
                    )
+      print(str(click))
+      print(click$customdata)
       # conduct query
       geneQuery <- dbGetQuery(con, paste0(
         "SELECT
@@ -587,12 +621,7 @@ server <- function(input, output, session) {
         select(gene_id, go_term, gene_function)
       
       
-      # # groups table where ALL listed values are identical
-      # group_by(species, gene_id, go_func, gene_function, author, year, description) %>%
-      #   # collapse contrasts/hyperlinks into a single string separated by a <br> so they appear on newlines in a single cell
-      #   summarise(contrasts = paste(unique(hyperlink), collapse = "<br>"),
-      #             keywords = paste(unique(keyword), collapse = "; "),
-      #             .groups = 'drop') %>%
+
       
       
       geneInfo(processedGeneInfo)
@@ -639,7 +668,7 @@ server <- function(input, output, session) {
   
  
   ## ---- Generate heatmap ----
-  output$heatmap <- renderPlot({
+  output$heatmap <- renderPlotly({
     ##TODO: Set log2FC scale to static???
     ## TODO: Change GeneFunctions!!!
     # Execute DB search
@@ -723,14 +752,18 @@ server <- function(input, output, session) {
     all_DEGs$contrast <- factor(all_DEGs$contrast, levels = ordered_levels)
 
     plot_data$contrast <- factor(plot_data$contrast, levels = ordered_levels)
+    
+    heatmapPlotData(plot_data)
 
     # generate heatmap only if <20 genes are selected
     if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
       # Wipe the message
       output$heatmapText <- NULL
       # Plot the heatmap
-      plot <- DEG_heatmap(plot_data)
-      heatmap(plot)
+      # plot <- DEG_heatmap(plot_data)
+      # # heatmap(plot)
+      # ggplotly(plot, tooltip = "text", source = "heat")
+      plot <- plotly_DEG_heatmap(plot_data)
       plot
       
     } else {
@@ -750,6 +783,69 @@ server <- function(input, output, session) {
 
   })
 
+  
+  ## ---- Open the Gene Info tab when a point is clicked on the heatmap ----
+  observeEvent(event_data("plotly_click", source = "heat"), {
+    click <- event_data("plotly_click", source = "heat")
+    if (!is.null(click)) {
+      # print("click:")
+      # print(click)
+      # # print(click$key, 
+      # #       # event_data("plotly_click", source="volc")
+      # # )
+      # print("str click:")
+      # print(str(click))
+      # selected_gene <- filter(heatmapPlotData(),
+      #                                contrast == click$x,
+      #                                gene_id == click$y)
+      # print("selected gene:")
+      # print(selected_gene)
+      print("customdata:")
+      print(click$customdata)
+      
+      # conduct query
+      geneQuery <- dbGetQuery(con, paste0(
+        "SELECT
+          Genes.gene_id,
+          GeneGo.go_term,
+          GeneFunctions.gene_function
+        FROM Genes
+        LEFT JOIN GeneGo ON Genes.gene_id = GeneGo.gene_id
+        LEFT JOIN GeneFunctions on Genes.gene_id = GeneFunctions.gene_id
+        WHERE Genes.gene_id = '",click$customdata,"';"
+      ))
+      processedGeneInfo <- geneQuery %>%
+        # mutate go_term to hyperlinks
+        ## TODO: Combine GO terms into single cell
+        mutate(
+          go_term = if_else(
+            is.na(go_term),
+            '<i>Not available</i>',
+            paste0('<a href="https://amigo.geneontology.org/amigo/term/',
+                   go_term, '" target="_blank">', go_term, '</a>')
+          ),
+          gene_function = if_else(
+            is.na(gene_function),
+            '<i>Not available</i>',
+            gene_function
+          )
+        )%>%
+        # Group and summarise the table to have all GO terms in a single cell
+        group_by(gene_id, gene_function) %>%
+        summarise(go_term = paste(unique(go_term), collapse = "<br>"), .groups = 'drop')%>%
+        # Reorder the columns to the correct order
+        select(gene_id, go_term, gene_function)
+      
+      
+      
+      
+      
+      geneInfo(processedGeneInfo)
+      # open tab
+      showTab("navMenu", target = "Gene Info")
+      updateTabsetPanel(session, "navMenu", selected = "Gene Info")
+    }
+  })
 
   ## ---- Download button downloads heatmap ----
   output$exportHeatmap <- downloadHandler(

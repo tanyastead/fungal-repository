@@ -18,7 +18,10 @@ parser.add_argument(
     help="path to repository.sqlite database",
     default="./database/repository.sqlite"
 )
-
+parser.add_argument(
+    '-g', '--go_term',
+    help="indicates that the annotation file contains go terms in the second column and functional annotation in the 3rd column"
+)
 args = parser.parse_args()
 
 # Connect to sqlite database
@@ -63,43 +66,85 @@ with open(args.annotation_file, mode='r', encoding='utf-8') as file, \
     cursor.execute(queryFTS)
     geneFTS.update(row[0] for row in cursor.fetchall())
 
+    ## If user indicates annotation file in format: gene_id | go_term | functional_annotation
+    if args.go_term:
 
-    ## Input the geneIDs and functions
-    for row in reader:
-        gene_id = row[0]
-        go_term = row[1]
-        if len(row) > 2:
-            gene_function = row[2]
+        ## Input the geneIDs and functions
+        for row in reader:
+            gene_id = row[0]
+            go_term = row[1]
+            if len(row) > 2:
+                gene_function = row[2]
 
-        try:
-            if gene_id in geneID and go_term in geneID[gene_id]:
-                continue  # Skip this row, combo already exists
+            try:
+                if gene_id in geneID and go_term in geneID[gene_id]:
+                    continue  # Skip this row, combo already exists
 
-            cursor.execute(
-                'INSERT INTO GeneGo (gene_id, go_term) VALUES (?, ?)',
-                (gene_id, go_term)
-            )
-            if gene_id not in geneFTS and gene_function is not None:
-                # TODO: need check to make sure not inserting empty/repetitive into FTS!!
                 cursor.execute(
-                    'INSERT INTO GeneFunctions (gene_id, go_func, gene_function) VALUES (?, ?, ?)',
-                    (gene_id, go_term, gene_function)
+                    'INSERT INTO GeneGo (gene_id, go_term) VALUES (?, ?)',
+                    (gene_id, go_term)
                 )
-                cursor.execute(
-                    'INSERT INTO GeneFunctions_FTS (gene_id, go_func, gene_function) VALUES (?, ?, ?)',
-                    (gene_id, go_term, gene_function)
-                )
-                geneFTS.add(gene_id)
-            
+                # if gene_id not in geneFTS and gene_function is not None:
+                # to check if gene_function exists and is not just whitespace
+                if gene_id not in geneFTS and gene_function and gene_function.strip():
+                    # TODO: need check to make sure not inserting empty/repetitive into FTS!!
+                    cursor.execute(
+                        'INSERT INTO GeneFunctions (gene_id, go_func, gene_function) VALUES (?, ?, ?)',
+                        (gene_id, go_term, gene_function)
+                    )
+                    cursor.execute(
+                        'INSERT INTO GeneFunctions_FTS (gene_id, go_func, gene_function) VALUES (?, ?, ?)',
+                        (gene_id, go_term, gene_function)
+                    )
+                    geneFTS.add(gene_id)
+                
 
-            # Update the dictionary to avoid re-inserting
-            if gene_id in geneID:
-                geneID[gene_id].append(go_term)
-            else:
-                geneID[gene_id] = [go_term]
+                # Update the dictionary to avoid re-inserting
+                if gene_id in geneID:
+                    geneID[gene_id].append(go_term)
+                else:
+                    geneID[gene_id] = [go_term]
 
-        except Exception as e:
-            print(f"Error inserting {gene_id}, {go_term}: {e}")
+            except Exception as e:
+                print(f"Error inserting {gene_id}, {go_term}: {e}")
+    
+    ## If user indicates annotation file in format of: gene_id | functional_annotation
+    else:
+        ## Input the geneIDs and functions
+        for row in reader:
+            gene_id = row[0]
+            if len(row) > 1:
+                gene_function = row[1]
+
+            try:
+                # if gene_id in geneID and go_term in geneID[gene_id]:
+                #     continue  # Skip this row, combo already exists
+
+                # cursor.execute(
+                #     'INSERT INTO GeneGo (gene_id, go_term) VALUES (?, ?)',
+                #     (gene_id, go_term)
+                # )
+                if gene_id not in geneFTS and gene_function and gene_function.strip():
+                    # TODO: need check to make sure not inserting empty/repetitive into FTS!!
+                    cursor.execute(
+                        'INSERT INTO GeneFunctions (gene_id, gene_function) VALUES (?, ?)',
+                        (gene_id, gene_function)
+                    )
+                    cursor.execute(
+                        'INSERT INTO GeneFunctions_FTS (gene_id, gene_function) VALUES (?, ?)',
+                        (gene_id, gene_function)
+                    )
+                    geneFTS.add(gene_id)
+                
+
+                # # Update the dictionary to avoid re-inserting
+                # if gene_id in geneID:
+                #     geneID[gene_id].append(go_term)
+                # else:
+                #     geneID[gene_id] = [go_term]
+
+            except Exception as e:
+                print(f"Error inserting {gene_id}: {e}")
 
 
 
