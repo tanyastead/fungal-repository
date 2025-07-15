@@ -7,7 +7,11 @@ interactive_volcano <- function(data, lFC, pv, cont, pmetric){
   
   # 1.5 convert the gene_function from hyperlinks into plain text
   subset_df$gene_function_plain <- sapply(subset_df$gene_function, function(html) {
-    xml_text(read_html(html))
+    if (str_detect(html, "<.*?>")) {
+      xml_text(read_html(html))
+    } else {
+      html  # already plain text, return as-is
+    }
   })
   
   # 1.8 save proper pmetric name
@@ -137,20 +141,20 @@ DEG_heatmap <- function(data){
 # Create plotly heatmap
 plotly_DEG_heatmap <- function(data){
   # Set the min and max values for the colour scale
-  if (any(data$log2FC < -1)){
-    zmin <- min(data$log2FC)
-  } else {
-    zmin <- -10
-  }
+  # if (any(data$log2FC < -1)){
+  #   zmin <- min(data$log2FC)
+  # } else {
+  #   zmin <- -2
+  # }
+  # 
+  # if (any(data$log2FC > 1)){
+  #   zmax <- max(data$log2FC)
+  # } else {
+  #   zmax <- 2
+  # }
   
-  if (any(data$log2FC > 1)){
-    zmax <- max(data$log2FC)
-  } else {
-    zmax <- 10
-  }
-  
-  zmid <- 0
-  midpoint <- (zmid - zmin) / (zmax - zmin)
+  # zmid <- 0
+  # midpoint <- (zmid - zmin) / (zmax - zmin)
   
   plot <- plot_ly(
     data = data,
@@ -158,17 +162,19 @@ plotly_DEG_heatmap <- function(data){
     y = ~gene_id,
     z = ~log2FC,
     type = "heatmap",
-    zmin = zmin,
-    zmax = zmax,
+    # zmin = zmin,
+    # zmax = zmax,
+    zmin = -3,
+    zmax = 3,
     colorscale = list(
-      list(zmin, "blue"),
-      list(midpoint, "grey"),
-      list(zmax, "red")
+      list(-3, "blue"),
+      list(0, "grey"),
+      list(3, "red")
     ),
     text = ~paste0(
       "Gene: ", gene_id, "<br>",
       "Function: ", gene_function, "<br>",
-      "Log fold change: ", round(log2FC, 3)
+      "Log<sub>2</sub>-fold change: ", round(log2FC, 3)
     ),
     customdata = ~gene_id,
     hoverinfo = "text",

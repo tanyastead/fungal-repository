@@ -204,9 +204,9 @@ ui <- fluidPage(
                                 # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
                               )
                             ),
+                            uiOutput("volcanoWarning"),
                             br(),
-                            plotlyOutput("volcanoPlot"),
-                            verbatimTextOutput("testVolcanoClick")
+                            plotlyOutput("volcanoPlot")
                             ),
 
 ## ---- Experiments Expression Heatmap Sub-Tab ----
@@ -235,7 +235,9 @@ ui <- fluidPage(
               ),
 # ---- Gene Info Tab ----
     nav_panel(title = "Gene Info",
-              br(),br(),
+              br(),
+              actionButton("backButton", "Back"),
+              br(),
               DTOutput("tableGeneInfo")
               )
     )

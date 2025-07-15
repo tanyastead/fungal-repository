@@ -231,16 +231,27 @@ server <- function(input, output, session) {
     data <- queryData()
     
     # Update refineSpecies
+    speciesList <- list()
+    for (sp in unique(data$species)){
+      count <- sum(data$species == sp)
+      speciesList <- list.append(speciesList, paste0(sp, " (", count, ")"))
+    }
     updateSelectizeInput(session,
                          "refineSpecies",
-                         choices = unique(data$species),
+                         choices = speciesList,
                          server = TRUE)
     
     # Update refineCondition
-    keywords <- unique(str_split(data$keywords, "; "))
+    all_keywords <- unlist(str_split(data$keywords, "; "))
+    keywords <- unique(all_keywords)
+    keywordsList <- list()
+    for (key in keywords){
+      count <- sum(all_keywords == key)
+      keywordsList <- list.append(keywordsList, paste0(key, " (", count, ")"))
+    }
     updateSelectizeInput(session,
                          "refineCondition",
-                         choices = keywords,
+                         choices = keywordsList,
                          server = TRUE)
   })
   
@@ -250,6 +261,7 @@ server <- function(input, output, session) {
     
     data <- queryData()
     
+    ### use regex to remove the count from the input, and then use the input to filter the table
     # Filter based on year
     if (!is.null(input$fromYear) && input$fromYear != "") {
       data <- dplyr::filter(data, year >= input$fromYear)
@@ -261,14 +273,13 @@ server <- function(input, output, session) {
     
     # Filter based on species
     if (!is.null(input$refineSpecies)){
-      data <- dplyr::filter(data, species %in% input$refineSpecies)
-      
+      spec <- str_replace(input$refineSpecies, "\\s\\([[:digit:]]+\\)$", "")
+      data <- dplyr::filter(data, species %in% spec)
     }
     
     # Filter based on keyword
     if (!is.null(input$refineCondition)){
-      terms <- input$refineCondition
-
+      terms <- str_replace(input$refineCondition, "\\s\\([[:digit:]]+\\)$", "")
       if (input$resultsConditionLogic == "OR") {
         keyword_pattern <- str_c(terms, collapse = "|")
         data <- data %>%
@@ -529,6 +540,7 @@ server <- function(input, output, session) {
   
   ## ---- reactive vals for volcano plot ----
   removedCols <- reactiveVal(0)
+
   
   ## ---- Generate interactive volcano plot ----
   output$volcanoPlot <- renderPlotly({
@@ -537,6 +549,21 @@ server <- function(input, output, session) {
     # remove empty pval and padj
     entire_df <- filter(entire_df, !is.na(padj))
     entire_df <- filter(entire_df, !is.na(pval))
+    
+    # Remove rows where pval is 0
+    emptyPval <- sum(entire_df$pval == 0)
+    removedCols(emptyPval)
+    entire_df <- filter(entire_df, pval != 0)
+    print("checking")
+    print(sum(entire_df$pval == 0))
+    print(sum(is.na(entire_df$pval)))
+    
+    output$volcanoWarning <- renderUI({
+      req(removedCols())
+      HTML(paste0('<span style="font-weight: bold;">
+                Note: ',removedCols(),' genes removed from plot due to empty p-values!
+               </span>'))
+    })
     
     # Check if rows do not contain a padj but do contain a pval, to determine which metric should be used to build the volcano plot
     if (any(entire_df$padj == 0 & entire_df$pval != 0)) {
@@ -639,11 +666,15 @@ server <- function(input, output, session) {
               rownames = FALSE,
               colnames = c("Gene", "GO Term", "Functional Annotation"),
               selection = "none",
-              options = list(dom = "tip"),
+              options = list(dom = "t"),
               escape = FALSE)
     
   })
   
+  ## ---- Gene Info Back Button ----
+  observeEvent(input$backButton, {
+    updateTabsetPanel(session, "navMenu", selected = "Experiments")
+  })
   
   ## ---- Download button downloads volcano plot ----
   output$exportVolcano <- downloadHandler(

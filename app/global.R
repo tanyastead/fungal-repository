@@ -14,6 +14,7 @@ library(bslib)
 library(purrr)
 library(xml2)
 library(shinyjs)
+library(rlist)
 
 # Source functions
 source("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/app/plots.R")
