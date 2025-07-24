@@ -20,6 +20,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '-g', '--go_term',
+    action='store_true',
     help="indicates that the annotation file contains go terms in the second column and functional annotation in the 3rd column"
 )
 args = parser.parse_args()

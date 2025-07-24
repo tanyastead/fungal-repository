@@ -15,12 +15,19 @@ library(purrr)
 library(xml2)
 library(shinyjs)
 library(rlist)
+library(shinydashboard)
+library(shinyFeedback)
+library(reticulate)
+library(jsonlite)
+
+# Set working directory
+setwd("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/")
 
 # Source functions
-source("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/app/plots.R")
+source("app/plots.R")
 
 # Connect to database
-con <- dbConnect(SQLite(), "/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/database/repository.sqlite")
+con <- dbConnect(SQLite(), "database/repository.sqlite")
 
 # Show list of tables
 tables <- dbListTables(con)

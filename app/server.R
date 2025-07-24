@@ -47,7 +47,7 @@ server <- function(input, output, session) {
     updateNumericInput(session, "pvalue", value = NA)
     updateNumericInput(session, "padj", value = NA)
     updateNumericInput(session, "lFC", value = NA)
-    updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
+    updateRadioButtons(session, "lFCRegulation", selected = "Differentially expressed")
     
     ## ---- Gene (Name or Function) selected ----
     if (input$term == "Gene (Name or Function)"){
@@ -476,7 +476,7 @@ server <- function(input, output, session) {
     
     # Filter based on logFC
     if (!is.null(input$lFC) && !is.na(input$lFC)){
-      if (input$lFCRegulation == "Up- or Downregulated"){
+      if (input$lFCRegulation == "Differentially expressed"){
         data <- filter(data, log2FC >= input$lFC | log2FC <= -input$lFC)
       }
       if (input$lFCRegulation == "Upregulated only"){
@@ -535,7 +535,7 @@ server <- function(input, output, session) {
     updateNumericInput(session, "pvalue", value = NA)
     updateNumericInput(session, "padj", value = NA)
     updateNumericInput(session, "lFC", value = NA)
-    updateRadioButtons(session, "lFCRegulation", selected = "Up- or Downregulated")
+    updateRadioButtons(session, "lFCRegulation", selected = "Differentially expressed")
   })
   
   ## ---- reactive vals for volcano plot ----
@@ -754,7 +754,7 @@ server <- function(input, output, session) {
     }
     # Filter based on log fold change
     if (!is.null(input$lFC) && !is.na(input$lFC)){
-      if (input$lFCRegulation == "Up- or Downregulated"){
+      if (input$lFCRegulation == "Differentially expressed"){
         filtered_genes <- filter(filtered_genes, log2FC >= input$lFC | log2FC <= -input$lFC)
       }
       if (input$lFCRegulation == "Upregulated only"){
@@ -899,5 +899,155 @@ server <- function(input, output, session) {
     }
   )
   
+  ## ---- TEST: Run python script from r shiny ----
+  observeEvent(input$uploadData, {
+    reticulate::py_run_file("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/database/DEG_Data/test_python.py")
+  })
+  
+  ## ---- Run populate_genes.py to populate database with DE data ----
+  observeEvent(input$uploadDEData, {
+    hasError <- FALSE
+    
+    # Add error messages if input fields are empty
+    if (input$expAuthor == "") {
+      showFeedbackDanger("expAuthor", "Author is required")
+      hasError <- TRUE
+    } else {
+      hideFeedback("expAuthor")
+    }
+    if (input$expYear == "") {
+      showFeedbackDanger("expYear", "Year is required")
+      hasError <- TRUE
+    } else {
+      hideFeedback("expYear")
+    }
+    if (input$expTitle == "") {
+      showFeedbackDanger("expTitle", "Title or description is required")
+      hasError <- TRUE
+    } else {
+      hideFeedback("expTitle")
+    }
+    if (input$expSpecies == "") {
+      showFeedbackDanger("expSpecies", "Fungal species is required")
+      hasError <- TRUE
+    } else {
+      hideFeedback("expSpecies")
+    }
+    if (is.null(input$expKeywords) || length(input$expKeywords) == 0) {
+      showFeedbackDanger("expKeywords", "At least 1 keyword is required")
+      hasError <- TRUE
+    } else {
+      hideFeedback("expKeywords")
+    }
+    if (is.null(input$chooseDEData)) {
+      showFeedbackDanger("chooseDEData", "Dataset is required")
+      hasError <- TRUE
+    } else {
+      hideFeedback("chooseDEData")
+    }
+    
+    # If any input failed validation, stop here
+    if (hasError) return()
+    
+    
+    # Build list of keywords
+    keys <- c()
+    for (key in input$expKeywords){
+      keys <- c(keys, "-k", key)
+    }
+    print(keys)
+    
+    # Build list of arguments
+    script_args <- c("database/populate_genes.py",
+              "-g", input$chooseDEData$datapath,
+              "-s", input$expSpecies,
+              "-a", input$expAuthor,
+              "-y", input$expYear,
+              "-t", input$expTitle,
+              "-d", "../database/repository.sqlite"
+              )
+    script_args <- c(script_args, keys)
+    # print(args)
+    
+    # Convert arguments to python style sys.argv string
+    arg_string <- paste0("import sys; sys.argv = ", toJSON(script_args, auto_unbox = TRUE))
+    # print(arg_string)
+    
+    # # check that wd is correct
+    # print(getwd())
+    # py_run_string("import os; print('Python cwd:', os.getcwd())")
+    
+    # Run code to set sys.argv in python
+    py_run_string(arg_string)
+    
+    withProgress(
+      message = "Adding dataset to repository",
+      value = 1,
+      {
+        # Run python script
+        py_run_file("../database/populate_genes.py")
+      }
+    )
+    
+    # Clear the inputs
+    updateTextInput(session, "expAuthor", value = "")
+    updateTextInput(session, "expYear", value = "")
+    updateTextInput(session, "expSpecies", value = "")
+    updateSelectizeInput(session, "expKeywords", choices = NULL, selected = NULL, server = TRUE)
+    updateTextAreaInput(session, expTitle, value = "")
+    reset("chooseDEData")
 
+  })
+  
+  ## ---- Run populate_annot.py to populate database with FA data ----
+  observeEvent(input$uploadFAData, {
+    hasError <- FALSE
+    
+    # Add error messages if input fields are empty
+    if (is.null(input$chooseFAData)) {
+      showFeedbackDanger("chooseFAData", "Dataset is required")
+      hasError <- TRUE
+    } else {
+      hideFeedback("chooseFAData")
+    }
+    
+    # If any input failed validation, stop here
+    if (hasError) return()
+    
+    # Construct arguments
+    if (input$goRadioFAData == "1"){
+      script_args <- c("../database/populate_annot.py",
+                "-a", input$chooseFAData$datapath,
+                "-d", "../database/repository.sqlite",
+                "-g")
+    } else if (input$goRadioFAData == "2"){
+      script_args <- c("../database/populate_annot.py",
+                "-a", input$chooseFAData$datapath,
+                "-d", "../database/repository.sqlite")
+    }
+    
+    print("printing args--------------")
+    print(script_args)
+    # Convert arguments to python style sys.argv string
+    arg_string <- paste0("import sys; sys.argv = ", toJSON(script_args, auto_unbox = TRUE))
+
+    # Run code to set sys.argv in python
+    py_run_string(arg_string)
+    
+    # Run python script
+    withProgress(
+      message = "Adding functional annotation to repository",
+      value = 1,
+      {
+        # Run python script
+        py_run_file("../database/populate_annot.py")
+      }
+    )
+    
+    # Clear the inputs
+    reset("chooseFAData")
+    
+    
+  })
+  
 }

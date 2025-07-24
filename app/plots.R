@@ -86,10 +86,10 @@ interactive_volcano <- function(data, lFC, pv, cont, pmetric){
       # ylim = c(0, min(100, max(-log10(subset_df$pval), na.rm = TRUE))),
       xlim = c(floor(min(subset_df$log2FC)), ceiling(max(subset_df$log2FC)))
     ) + # since some genes can have minuslog10padj of inf, we set these limits
-    labs(color = 'Expression', #legend_title, 
-         x = "log2 Fold Change", y = "-log10 p-value") +
+    labs(color = 'Expression', #legend_title, "Log<sub>2</sub>-fold change"
+         x = "Log<sub>2</sub>-fold change", y = paste0("-log<sub>10</sub> ", metric)) +
     ggtitle(paste0("Volcano plot of contrast ", cont, "\n",
-                   "log fold change = ", lFC, " and ", metric, " = ", pv)) +
+                   "Log<sub>2</sub>-fold change = ", lFC, " and ", metric, " = ", pv)) +
     theme(axis.text.x = element_text(size = 8),  plot.title = element_text(size = 10)) +
     ## working code, just not sure if this is how i want to identify and label outliers...
     # geom_text(aes(label = outliers), vjust = -1)+
@@ -117,9 +117,9 @@ DEG_heatmap <- function(data){
                            fill = log2FC, 
                            text = paste0("Gene: ", gene_id, "<br>",
                                           "Functional annotation: ", gene_function, "<br>",
-                                         "Log fold change: ", log2FC),
+                                         "Log<sub>2</sub>-fold change: ", log2FC),
                            key = gene_id,
-                           customdata = gene_id,
+                           customdata = gene_id, 
                            group = gene_id
                            )) +
     geom_tile() +
@@ -179,7 +179,7 @@ plotly_DEG_heatmap <- function(data){
     customdata = ~gene_id,
     hoverinfo = "text",
     source = "heat",
-    colorbar = list(title = list(text = "Log<sub>2</sub> fold change"))
+    colorbar = list(title = list(text = "Log<sub>2</sub>-fold change"))
   ) %>%
     layout(title = "Gene Expression", 
            xaxis = list(title = "Contrast"), 

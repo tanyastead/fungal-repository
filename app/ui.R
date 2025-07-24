@@ -33,10 +33,11 @@ ui <- fluidPage(
                                   ),
                               tags$hr(style = "margin-top: 20px; margin-bottom: 10px;"),
                               
-                              # Add text underneath the line
+                              # Add text underneath the line 
                               div(style = "text-align: center; color: #555; font-style: italic;",
                                   "Search by gene ID, gene function or experimental condition (e.g. temperature)"
                               )
+
                               
               ))
               ),
@@ -167,7 +168,7 @@ ui <- fluidPage(
                              min = 0),
                 radioButtons("lFCRegulation",
                              NULL,
-                             choices = c("Up- or Downregulated", "Upregulated only", "Downregulated only")),
+                             choices = c("Differentially expressed", "Upregulated only", "Downregulated only")),
                 br(),
                 actionButton("clearExperiments", "Clear"),
                 # actionButton("exportExperiments", "Export Table", icon = icon("download"))
@@ -239,6 +240,60 @@ ui <- fluidPage(
               actionButton("backButton", "Back"),
               br(),
               DTOutput("tableGeneInfo")
+              ),
+# ---- Spacer ----
+    nav_spacer(),
+# ---- Upload data Tab ----
+    nav_panel(title = "Upload",
+              br(),
+              #### DE Data upload ####
+              tags$h4("Upload differential expression data:"),
+              tags$h5("To upload differential expression data into the repository, please enter the first author associated with the experiment, 
+                      the year the study was published, the title or a description of the study, and any keywords associated with the study. Select the 
+                      file containing the differential expression data, either in csv or txt format. This file should contain gene ID in column 1, 
+                      contrast A and contrast B in columns 2 and 3, and in columns 7-11 log2-fold change, log2-fold change standard error, 
+                      Wald test statistic (optional), p-value, and p-adjusted value. An example of this format is displayed below."),
+              br(),
+              useShinyFeedback(),
+              fluidRow(
+                column(3,textInput("expAuthor", "Author:", placeholder = "Enter experiment author...")),
+                column(3, textInput("expYear", "Year:", width = "250px", placeholder = "Enter experiment year...")),
+                column(3, textInput("expSpecies", "Fungal species:", width = "250px", placeholder = "Enter fungal species...")),
+                column(3,  selectizeInput("expKeywords",
+                                          "Keywords:", choices = NULL, multiple = TRUE,
+                                          options = list(create = TRUE, placeholder = "Enter experiment keywords...")))
+              ),
+
+              div(style = "display: flex; align-items: center; gap: 20px;",
+                  div(textAreaInput("expTitle", "Title or Description:", width = "250px", placeholder = "Enter experiment title or description...")),
+                  div(
+                    style = " margin-top: 5px; ",
+                      fileInput("chooseDEData", "Choose File:")),
+                  div(style = "display: flex; align-items: center; height: 100%; margin-top: 5px; ",
+                      actionButton("uploadDEData", "Upload",
+                                   style = "width: 100%; margin-top: -15px; line-height: 1.8;height: 35px;"))
+                  ),
+
+              br(), br(),
+              
+              tags$h4("Upload functional annotation data:"),
+              tags$h5("To upload functional annotation data, select a file containing functional annotation data. Column 1 should contain gene ID. If 
+                      GO terms are present, these should be present in column 2. If not available, column 2 should be populated with gene functional annotation
+                      data. An example of this format is displayed below."),
+              br(),
+              div(style = "display: flex; align-items: center; gap: 20px;",
+                  div(style = "margin-top: 15px;",
+                      fileInput("chooseFAData", "Choose File")),
+                  div(style = "margin-top: 0px;",
+                    radioButtons("goRadioFAData", "Select the type of annotation in column 2", 
+                                   choices = list("GO terms" = 1, "Functional annotations" = 2),
+                                   selected = 1)),
+                  div(style = "display: flex; align-items: center; height: 100%;",
+                      actionButton("uploadFAData", "Upload",
+                                   style = "width: 100%; margin-top: 0; line-height: 1.8;height: 38px;"))
+              )
+              
+
               )
     )
 )
