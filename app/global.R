@@ -19,6 +19,8 @@ library(shinydashboard)
 library(shinyFeedback)
 library(reticulate)
 library(jsonlite)
+library(bsicons)
+library(tippy)
 
 # Set working directory
 setwd("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/")

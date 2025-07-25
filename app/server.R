@@ -982,7 +982,7 @@ server <- function(input, output, session) {
     
     withProgress(
       message = "Adding dataset to repository",
-      value = 1,
+      value = 0.5,
       {
         # Run python script
         py_run_file("../database/populate_genes.py")
@@ -994,7 +994,7 @@ server <- function(input, output, session) {
     updateTextInput(session, "expYear", value = "")
     updateTextInput(session, "expSpecies", value = "")
     updateSelectizeInput(session, "expKeywords", choices = NULL, selected = NULL, server = TRUE)
-    updateTextAreaInput(session, expTitle, value = "")
+    updateTextAreaInput(session, "expTitle", value = "")
     reset("chooseDEData")
 
   })
@@ -1037,7 +1037,7 @@ server <- function(input, output, session) {
     # Run python script
     withProgress(
       message = "Adding functional annotation to repository",
-      value = 1,
+      value = 0.5,
       {
         # Run python script
         py_run_file("../database/populate_annot.py")
