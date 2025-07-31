@@ -251,23 +251,7 @@ ui <- fluidPage(
               tags$h5("To upload differential expression data into the repository, please fill out all the fields below."),
               br(),
               useShinyFeedback(),
-              # shinyBS::bsTooltip(
-              #   id = "expAuthor",  # ID of the input
-              #   title = "Enter the name of the experiment author.",  # Tooltip text
-              #   placement = "right",  # Where the tooltip appears (top, right, bottom, left)
-              #   trigger = "hover",  # How the tooltip is triggered: hover, focus, click
-              #   options = list(container = "body")  # Optional: prevents weird alignment issues
-              # ),
               fluidRow(
-                # column(3,
-                #        tags$div(
-                #          tags$label("Author",
-                #                     tags$i(class = "fas fa-info-circle",
-                #                            style = "margin-left: 5px; cursor: pointer;",
-                #                            title = "Enter the name of the experiment author")
-                #          )
-                #        ),
-                #        textInput("expAuthor", label = NULL, placeholder = "Enter experiment author...") ),
                 column(3,
                        tags$label("Author:",
                                   tippy(
@@ -278,7 +262,18 @@ ui <- fluidPage(
                                     delay = c(0, 0)
                                   )
                        ),
-                       textInput("expAuthor", label = NULL, placeholder = "Enter experiment author...")
+                       # textInput("expAuthor", label = NULL, placeholder = "Enter experiment author...")
+                       selectizeInput(
+                         inputId = "expAuthor",
+                         label = NULL,
+                         choices = c("",authors$author),  # Replace with your actual list of authors
+                         selected = "",
+                         multiple = FALSE,
+                         options = list(
+                           placeholder = "Enter experiment author...",
+                           create = TRUE
+                         )
+                       )
                 ),
                 column(3, 
                        tags$label("Year:",
@@ -301,7 +296,19 @@ ui <- fluidPage(
                                     delay = c(0, 0)
                                   )
                        ),
-                       textInput("expSpecies", NULL, width = "250px", placeholder = "Enter fungal species...")),
+                       # textInput("expSpecies", NULL, width = "250px", placeholder = "Enter fungal species...")
+                       selectizeInput(
+                         inputId = "expSpecies",
+                         label = NULL,
+                         choices = c("",queriedSpecies$species),  # Replace with your actual list of authors
+                         selected = "",
+                         multiple = FALSE,
+                         options = list(
+                           placeholder = "Enter fungal species...",
+                           create = TRUE
+                         )
+                       )
+                       ),
                 column(3,  
                        tags$label("Keywords:",
                                   tippy(
@@ -313,57 +320,80 @@ ui <- fluidPage(
                                   )
                        ),
                        selectizeInput("expKeywords",
-                                          NULL, choices = NULL, multiple = TRUE,
+                                          NULL, choices = keywords$keyword, multiple = TRUE,
                                           options = list(create = TRUE, placeholder = "Enter experiment keywords...")))
               ),
-
-              div(style = "display: flex; align-items: center; gap: 20px;",
-                  div(tags$label("Title or description:",
-                                 tippy(
-                                   tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
-                                   tooltip = "Enter the title or a description of the study",
-                                   placement = "right",
-                                   theme = "custom_tooltip",
-                                   delay = c(0, 0)
-                                 )
-                  ),
-                    textAreaInput("expTitle", NULL, width = "250px", placeholder = "Enter experiment title or description...")),
-                  div(
-                    style = " margin-top: 5px; ",
-                    tags$label("Choose file:",
-                               tippy(
-                                 tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
-                                 tooltip = "Select the file containing the differential expression data, either in csv or txt format. 
+              fluidRow(
+                column(3, 
+                       tags$label("Title or description:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Enter the title or a description of the study",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       textAreaInput("expTitle", NULL, width = "250px", placeholder = "Enter experiment title or description...")),
+                column(3,
+                       tags$label("Choose file:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Select the file containing the differential expression data, either in csv or txt format. 
                                  This file should contain gene ID in column 1, contrast A and contrast B in columns 2 and 3, and in columns 
                                  7-11 log2-fold change, log2-fold change standard error, Wald test statistic (optional), p-value, and p-adjusted value.",
-                                 placement = "right",
-                                 theme = "custom_tooltip",
-                                 delay = c(0, 0)
-                               )
-                    ),
-                      fileInput("chooseDEData", NULL)),
-                  div(style = "display: flex; align-items: center; height: 100%; margin-top: 5px; ",
-                      actionButton("uploadDEData", "Upload",
-                                   style = "width: 100%; margin-top: -15px; line-height: 1.8;height: 35px;"))
-                  ),
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       fileInput("chooseDEData", NULL)),
+                column(1,
+                       actionButton("uploadDEData", "Upload",
+                                    style = "width: 100%; margin-top: 23px; line-height: 1.8;height: 35px;"))
+                
+              ),
+
 
               br(), br(),
               
               tags$h4("Upload functional annotation data:"),
-              tags$h5("To upload functional annotation data, select a file containing functional annotation data. Column 1 should contain gene ID. If 
-                      GO terms are present, these should be present in column 2. If not available, column 2 should be populated with gene functional annotation
-                      data. An example of this format is displayed below."),
+              tags$h5("To upload functional annotation data, select a file containing functional annotation data and and specify which data in contained in
+                      column 2 of the file."),
               br(),
-              div(style = "display: flex; align-items: center; gap: 20px;",
-                  div(style = "margin-top: 15px;",
-                      fileInput("chooseFAData", "Choose File")),
-                  div(style = "margin-top: 0px;",
-                    radioButtons("goRadioFAData", "Select the type of annotation in column 2", 
-                                   choices = list("GO terms" = 1, "Functional annotations" = 2),
-                                   selected = 1)),
-                  div(style = "display: flex; align-items: center; height: 100%;",
-                      actionButton("uploadFAData", "Upload",
-                                   style = "width: 100%; margin-top: 0; line-height: 1.8;height: 38px;"))
+              fluidRow(
+                column(3,
+                       tags$label("Choose file:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Select the file containing the functional annotation data, either in CSV or TXT format. The file should contain
+                                    gene ID in column 1. If the file contains GO terms, these should be in column 2 and functional annotation in column 3. 
+                                    If GO terms are not available, functional annotation should be in column 2. This setting can be configured in the main interface.",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       fileInput("chooseFAData", NULL)
+                       ),
+                column(3,
+                       tags$label("Select the type of annotation in column 2",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Select the information present in column 2. If the file contains GO terms, these should be located in column 2
+                                    with functional annotation in column 3. If the file does not contain GO terms, column 2 should contain functional annotation
+                                    and column 3 should be empty",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ), radioButtons("goRadioFAData", NULL, 
+                                       choices = list("GO terms" = 1, "Functional annotations" = 2),
+                                       selected = 1)
+                       ),
+                column(1,
+                       actionButton("uploadFAData", "Upload",
+                                    style = "width: 100%; margin-top: 0; line-height: 1.8;height: 38px;"))
               )
               
 

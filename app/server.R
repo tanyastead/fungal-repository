@@ -786,8 +786,8 @@ server <- function(input, output, session) {
     
     heatmapPlotData(plot_data)
 
-    # generate heatmap only if <20 genes are selected
-    if (nrow(plot_data) < (20 * length(unique(all_DEGs$contrast)))){
+    # generate heatmap only if <30 genes are selected
+    if (nrow(plot_data) < (30 * length(unique(all_DEGs$contrast)))){
       # Wipe the message
       output$heatmapText <- NULL
       # Plot the heatmap
@@ -797,12 +797,15 @@ server <- function(input, output, session) {
       plot <- plotly_DEG_heatmap(plot_data)
       plot
       
+      # save the heatmap so it can be downloaded
+      # heatmap(plot) # TODO: this is necessary to download the plot, but doesn't allow the heatmap to be 
+      
     } else {
       # Print output mnessage
       output$heatmapText <- renderUI({
         HTML('<span style="font-weight: bold;">
           Too many genes selected!<br>
-          <i>Select fewer than 20 genes to generate expression heatmap</i>
+          <i>Select fewer than 30 genes to generate expression heatmap</i>
         </span>')
       })
       # Colour the empty plot space to match the background
@@ -899,6 +902,28 @@ server <- function(input, output, session) {
     }
   )
   
+  # ## ---- Download button downloads volcano plot ----
+  # output$exportVolcano <- downloadHandler(
+  #   filename = function() {
+  #     paste0(selectedContrast(), "_", 
+  #            selectedAuthor(), "_", 
+  #            selectedYear(), "_", 
+  #            format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), 
+  #            ".png")
+  #   },
+  #   content = function(file) {
+  #     ggsave(
+  #       filename = file,
+  #       plot = volcano(), 
+  #       device = "png",
+  #       width = 8,
+  #       height = 6,
+  #       dpi = 300
+  #     )
+  #   }
+  # )
+  
+  
   ## ---- TEST: Run python script from r shiny ----
   observeEvent(input$uploadData, {
     reticulate::py_run_file("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/database/DEG_Data/test_python.py")
@@ -990,9 +1015,11 @@ server <- function(input, output, session) {
     )
     
     # Clear the inputs
-    updateTextInput(session, "expAuthor", value = "")
+    # updateTextInput(session, "expAuthor", value = "")
+    updateSelectizeInput(session, "expAuthor", choices = c("",authors$author), selected = "", server = TRUE)
     updateTextInput(session, "expYear", value = "")
-    updateTextInput(session, "expSpecies", value = "")
+    # updateTextInput(session, "expSpecies", value = "")
+    updateSelectizeInput(session, "expSpecies", choices = c("",queriedSpecies$species), selected = "", server = TRUE)
     updateSelectizeInput(session, "expKeywords", choices = NULL, selected = NULL, server = TRUE)
     updateTextAreaInput(session, "expTitle", value = "")
     reset("chooseDEData")

@@ -42,15 +42,15 @@ body {
   /*color: #ffffff !important;  378add  text color when hovering */
 }
 
-/* Set the size for the tooltip text 
+Set the size for the tooltip text 
 .tippy-box[data-theme~='custom_tooltip'] {
-  font-size: 30px !important;
-  background-color: #d00909 !important;
+  font-size: 17px !important;
+  background-color: #333 !important;
   color: #fff;
   padding: 6px 10px;
   border-radius: 6px;
 }
-  */
+
 .tippy-tooltip {
-  font-size: 30px;
+  font-size: 17px;
 }
