@@ -324,17 +324,17 @@ ui <- fluidPage(
                                           options = list(create = TRUE, placeholder = "Enter experiment keywords...")))
               ),
               fluidRow(
-                column(3, 
-                       tags$label("Title or description:",
-                                  tippy(
-                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
-                                    tooltip = "Enter the title or a description of the study",
-                                    placement = "right",
-                                    theme = "custom_tooltip",
-                                    delay = c(0, 0)
-                                  )
-                       ),
-                       textAreaInput("expTitle", NULL, width = "250px", placeholder = "Enter experiment title or description...")),
+                # column(3, 
+                #        tags$label("Title or description:",
+                #                   tippy(
+                #                     tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                #                     tooltip = "Enter the title or a description of the study",
+                #                     placement = "right",
+                #                     theme = "custom_tooltip",
+                #                     delay = c(0, 0)
+                #                   )
+                #        ),
+                #        textAreaInput("expTitle", NULL, width = "250px", placeholder = "Enter experiment title or description...")),
                 column(3,
                        tags$label("Choose file:",
                                   tippy(
@@ -348,6 +348,17 @@ ui <- fluidPage(
                                   )
                        ),
                        fileInput("chooseDEData", NULL)),
+                column(3, 
+                       tags$label("Title or description:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Enter the title or a description of the study",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       textAreaInput("expTitle", NULL, width = "250px", placeholder = "Enter experiment title or description...")),
                 column(1,
                        actionButton("uploadDEData", "Upload",
                                     style = "width: 100%; margin-top: 23px; line-height: 1.8;height: 35px;"))
@@ -358,8 +369,7 @@ ui <- fluidPage(
               br(), br(),
               
               tags$h4("Upload functional annotation data:"),
-              tags$h5("To upload functional annotation data, select a file containing functional annotation data and and specify which data in contained in
-                      column 2 of the file."),
+              tags$h5("To upload functional annotation data, select a file containing functional annotation data and and specify the data structure."),
               br(),
               fluidRow(
                 column(3,
@@ -381,14 +391,14 @@ ui <- fluidPage(
                                   tippy(
                                     tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
                                     tooltip = "Select the information present in column 2. If the file contains GO terms, these should be located in column 2
-                                    with functional annotation in column 3. If the file does not contain GO terms, column 2 should contain functional annotation
+                                    with gene description in column 3. If the file does not contain GO terms, column 2 should contain gene description
                                     and column 3 should be empty",
                                     placement = "right",
                                     theme = "custom_tooltip",
                                     delay = c(0, 0)
                                   )
                        ), radioButtons("goRadioFAData", NULL, 
-                                       choices = list("GO terms" = 1, "Functional annotations" = 2),
+                                       choices = list("GO terms" = 1, "Gene descriptions" = 2),
                                        selected = 1)
                        ),
                 column(1,

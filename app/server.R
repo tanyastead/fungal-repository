@@ -925,9 +925,9 @@ server <- function(input, output, session) {
   
   
   ## ---- TEST: Run python script from r shiny ----
-  observeEvent(input$uploadData, {
-    reticulate::py_run_file("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/database/DEG_Data/test_python.py")
-  })
+  # observeEvent(input$uploadData, {
+  #   reticulate::py_run_file("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/database/DEG_Data/test_python.py")
+  # })
   
   ## ---- Run populate_genes.py to populate database with DE data ----
   observeEvent(input$uploadDEData, {
