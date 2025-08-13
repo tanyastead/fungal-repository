@@ -790,15 +790,15 @@ server <- function(input, output, session) {
     if (nrow(plot_data) < (30 * length(unique(all_DEGs$contrast)))){
       # Wipe the message
       output$heatmapText <- NULL
-      # Plot the heatmap
-      # plot <- DEG_heatmap(plot_data)
-      # # heatmap(plot)
+      # Plot the static ggplot heatmap so it can be saved and downloaded
+      save_plot <- DEG_heatmap(plot_data)
+      heatmap(save_plot)
       # ggplotly(plot, tooltip = "text", source = "heat")
       plot <- plotly_DEG_heatmap(plot_data)
       plot
       
       # save the heatmap so it can be downloaded
-      # heatmap(plot) # TODO: this is necessary to download the plot, but doesn't allow the heatmap to be 
+      # heatmap(plot) # TODO: this is necessary to download the plot, but doesn't allow the heatmap to be
       
     } else {
       # Print output mnessage

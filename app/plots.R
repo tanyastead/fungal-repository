@@ -123,7 +123,7 @@ DEG_heatmap <- function(data){
                            group = gene_id
                            )) +
     geom_tile() +
-    scale_fill_gradient2(low = "#00AFBB", mid = "grey85", high = "#F8766D", midpoint = 0) +
+    scale_fill_gradient2(low = "blue", mid = "grey", high = "red", midpoint = 0, limits = c(-3, 3), oob = scales::squish) +
     theme_light() +
     labs(x = "Contrast", y = "Gene ID", fill = "log2FC") +
     ggtitle("Gene expression")+
@@ -182,7 +182,9 @@ plotly_DEG_heatmap <- function(data){
     colorbar = list(title = list(text = "Log<sub>2</sub>-fold change"))
   ) %>%
     layout(title = "Gene Expression", 
-           xaxis = list(title = "Contrast"), 
+           xaxis = list(title = "Contrast"
+                        , tickangle = -45
+                        ), 
            yaxis = list(title = "Gene ID")
            # legend = list(title=list(text='<br> Log fold change <br>'))
            ) 
