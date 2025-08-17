@@ -131,7 +131,7 @@ DEG_heatmap <- function(data){
       panel.grid.major.x = element_blank(),   # ❌ Remove vertical major gridlines
       # panel.grid.minor.x = element_blank(),   # ❌ Remove vertical minor gridlines
       panel.grid.major.y = element_line(color = "grey80"),  # ✅ Keep horizontal gridlines
-      axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
       axis.text.y = element_text(size = 7)
     )
   return(plot)
