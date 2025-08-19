@@ -664,7 +664,7 @@ server <- function(input, output, session) {
     
     datatable(geneInfo(),
               rownames = FALSE,
-              colnames = c("Gene", "GO Term", "Functional Annotation"),
+              colnames = c("Gene", "GO Term", "Gene Description"),
               selection = "none",
               options = list(dom = "t"),
               escape = FALSE)
