@@ -6,7 +6,9 @@ DROP TABLE IF EXISTS ExpContrasts;
 DROP TABLE IF EXISTS GeneContrasts;
 DROP TABLE IF EXISTS ExpKeywords;
 DROP TABLE IF EXISTS Experiments;
+DROP TABLE IF EXISTS GeneFunctions_FTS;
 DROP TABLE IF EXISTS GeneFunctions;
+DROP TABLE IF EXISTS GeneGo;
 DROP TABLE IF EXISTS Genes;
 
 /* Create the Genes table */
@@ -16,12 +18,38 @@ CREATE TABLE IF NOT EXISTS Genes (
     PRIMARY KEY (gene_id)
 );
 
-/* Create the GeneFunctions table */
+-- /* Create the GeneFunctions table */
+-- CREATE TABLE IF NOT EXISTS GeneFunctions (
+--     id INTEGER NOT NULL,
+--     gene_id TEXT,
+--     go_term TEXT,
+--     gene_function TEXT,
+--     PRIMARY KEY (id),
+--     FOREIGN KEY (gene_id) REFERENCES Genes (gene_id)
+-- );
+/* Create go term table to hold go terms */
+CREATE TABLE IF NOT EXISTS GeneGo(
+    id INTEGER NOT NULL,
+    gene_id TEXT,
+    go_term TEXT,
+    PRIMARY KEY (id),
+    FOREIGN KEY (gene_id) REFERENCES Genes (gene_id)
+);
+
+/* Create normal GeneFunctions table */
 CREATE TABLE IF NOT EXISTS GeneFunctions (
     gene_id TEXT,
+    go_func TEXT,
     gene_function TEXT,
-    PRIMARY KEY (gene_id),
-    FOREIGN KEY (gene_id) REFERENCES Genes (gene_id)
+    PRIMARY KEY (gene_id)
+);
+
+/* Create the GeneFunctions_FTS table for rapid searching of gene functions */
+-- NOTE: FTS table doesn't hold traditional FOREIGN KEY logic!
+CREATE VIRTUAL TABLE IF NOT EXISTS GeneFunctions_FTS USING fts5 (
+    gene_id UNINDEXED,
+    go_func,
+    gene_function
 );
 
 /* Create the GeneContrasts table */

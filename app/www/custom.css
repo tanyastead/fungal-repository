@@ -1,0 +1,56 @@
+/* www/custom.css */
+
+body {
+  background-color: #f5f7fa;
+  color: #333;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* Sidebar panel */
+.well {
+  background-color: #ffffff;
+  border: 1px solid #ccc;
+}
+
+/* Buttons */
+.btn {
+  background-color: #004080;
+  color: white;
+  border: none;
+}
+.btn:hover {
+  background-color: #378add;
+  color: white;
+}
+
+/* Nav tabs */
+.nav-tabs {
+  background-color: #004080;
+  border-bottom: 2px solid #003366;
+}
+.nav-tabs > li > a {
+  color: #ffffff !important;
+}
+.nav-tabs > li.active > a {
+  background-color: #ffffff !important;
+  color: #004080 !important;
+  font-weight: bold;
+}
+/* Hover color for nav tabs */
+.nav-tabs > li > a:hover {
+  background-color: #378add;   /* background when hovering */
+  /*color: #ffffff !important;  378add  text color when hovering */
+}
+
+Set the size for the tooltip text 
+.tippy-box[data-theme~='custom_tooltip'] {
+  font-size: 17px !important;
+  background-color: #333 !important;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.tippy-tooltip {
+  font-size: 17px;
+}

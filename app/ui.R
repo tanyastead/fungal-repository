@@ -1,29 +1,85 @@
 # ui.R
 ui <- fluidPage(
+  useShinyjs(), 
+  # theme = my_theme,
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+  ),
   titlePanel("Fungal Transcriptomic Database"),
   navset_tab(id = "navMenu",
+ # ---- Search Tab ----
     nav_panel(title = "Search",
-              #TODO: move the search section to the middle of the page!
-              br(), 
-              fluidRow(
-                  column(4, textInput("query", NULL, placeholder = "Enter search text...")),
-                  column(4, selectInput("term", NULL, choices = c("Gene (Name or Function)", "Keyword"))),
-                  column(4, actionButton("search", "Search"))
-                  )),
+              br(), br(),
+              fluidRow(column(8, offset = 2,
+                                  # Horizontal alignment using flexbox
+                                  div(style = "display: flex; justify-content: space-between; align-items: center;",
+                                      # Text Input
+                                      div(style = "flex: 2; padding-right: 10px;margin-top: 15px;",
+                                          textInput("query", NULL, placeholder = "Enter search text...", width = "100%")
+                                      ),
+                                      # Select Input
+                                      div(style = "flex: 2; padding: 0 10px;margin-top: 15px;",
+                                          selectInput("term", NULL,
+                                                      choices = c("Gene (Name or Function)", "Condition"),
+                                                      width = "100%")
+                                      ),
+                                      # Search Button aligned using margin-top
+                                      div(style = "flex: 1; padding-left: 10px;",
+                                          div(style = "display: flex; align-items: center; height: 100%;",
+                                              actionButton("search", "Search", 
+                                                           style = "width: 100%; margin-top: 0; line-height: 1.8;height: 38px;")
+                                          )
+                                      )
+                                  ),
+                              tags$hr(style = "margin-top: 20px; margin-bottom: 10px;"),
+                              
+                              # Add text underneath the line 
+                              div(style = "text-align: center; color: #555; font-style: italic;",
+                                  "Search by gene ID, gene function or experimental condition (e.g. temperature)"
+                              )
+
+                              
+              ))
+              ),
+ # ---- Results Tab ----
     nav_panel(title = "Results", 
-              p("Second tab content."),
+              br(),
               sidebarPanel(
                 strong("Refine output:"),
-                selectizeInput("refineSpecies", 
-                               NULL, 
-                               choices = queriedSpecies$species, 
-                               multiple = TRUE, 
+                selectizeInput("refineSpecies",
+                               NULL,
+                               choices = NULL,
+                               multiple = TRUE,
                                options = list(placeholder = "Enter species...")),
-                selectizeInput("refineCondition", 
-                               NULL, 
-                               choices = keywords, 
-                               multiple = TRUE, 
-                               options = list(placeholder = "Enter condition...")),
+
+                
+                
+                # selectizeInput("refineCondition",
+                #                NULL,
+                #                choices = NULL,
+                #                multiple = TRUE,
+                #                options = list(placeholder = "Enter condition...")),
+                # actionButton("toggle_logic", label = "", icon = icon("chevron-down")),
+                div(style = "display: flex; align-items: center; gap: 10px;",
+                    div(style = "flex-grow: 1;",
+                        selectizeInput("refineCondition",
+                                       NULL,
+                                       choices = NULL,
+                                       multiple = TRUE,
+                                       options = list(placeholder = "Enter condition..."))
+                    ),
+                    actionButton("resultsConditionToggle", label = NULL, icon = icon("chevron-down"),
+                                 style = "margin-top: -15px;")
+                ),
+                hidden(
+                  div(id = "resultsConditionLogicBox",
+                      tags$label("Search logic:", style = "font-weight: normal;"),
+                      radioButtons("resultsConditionLogic",
+                                   label = NULL,
+                                   choices = c("AND", "OR"),
+                                   inline = TRUE)
+                  )
+                ),
                 br(),
                 tags$h6("From:"),
                 textInput("fromYear", NULL, placeholder = "Year..."),
@@ -31,18 +87,19 @@ ui <- fluidPage(
                 textInput("toYear", NULL, placeholder = "Year..."),
                 br(),
                 actionButton("clearResults", "Clear"),
-                actionButton("exportResults", "Export Table", icon = icon("download"))
+                downloadButton(outputId = "exportResults", label = "Export Table")
                 
               ),
               mainPanel(
                 DTOutput("tableData"),
-                textOutput("speciesMessage"),
-                textOutput("keywordMessage"),
-                textOutput("fromYearMessage"),
-                textOutput("toYearMessage"),
-                verbatimTextOutput("troubleshootingCondition")
+                # textOutput("speciesMessage"),
+                # textOutput("keywordMessage"),
+                # textOutput("fromYearMessage"),
+                # textOutput("toYearMessage"),
+                # verbatimTextOutput("troubleshootingCondition")
               )
             ),
+# ---- Experiments Tab ----
     nav_panel(title = "Experiments",
               fluidRow(
                 column(
@@ -56,14 +113,42 @@ ui <- fluidPage(
                   )
                 )
               ),
+## ---- Experiments Sidebar ----
               sidebarPanel(
                 strong("Refine output:"),
                 selectizeInput("refineGene",
                                NULL,
                                choices = NULL,
                                multiple = TRUE,
-                               options = list(placeholder = "Enter gene...")),
+                               options = list(placeholder = "Enter gene name...")),
                 # refine output - gene function??
+                # selectizeInput("refineFunctionExp", 
+                #                NULL, choices = NULL, multiple = TRUE, 
+                #                options = list(create = TRUE, placeholder = "Enter functional annotation...")),
+                
+                
+                
+                div(style = "display: flex; align-items: center; gap: 10px;",
+                    div(style = "flex-grow: 1;",
+                        selectizeInput("refineFunctionExp", 
+                                       NULL, choices = NULL, multiple = TRUE, 
+                                       options = list(create = TRUE, placeholder = "Enter functional annotation..."))
+                    ),
+                    actionButton("expFunctionToggle", label = NULL, icon = icon("chevron-down"),
+                                 style = "margin-top: -15px;")
+                ),
+                hidden(
+                  div(id = "expFunctionLogicBox",
+                      tags$label("Search logic:", style = "font-weight: normal;"),
+                      radioButtons("expFunctionLogic",
+                                   label = NULL,
+                                   choices = c("AND", "OR"),
+                                   inline = TRUE)
+                  )
+                ),
+                
+                
+                
                 numericInput("pvalue",
                              "p-value <",
                              value = NULL,
@@ -83,13 +168,15 @@ ui <- fluidPage(
                              min = 0),
                 radioButtons("lFCRegulation",
                              NULL,
-                             choices = c("Up- or Downregulated", "Upregulated only", "Downregulated only")),
+                             choices = c("Differentially expressed", "Upregulated only", "Downregulated only")),
                 br(),
                 actionButton("clearExperiments", "Clear"),
                 # actionButton("exportExperiments", "Export Table", icon = icon("download"))
               ),
               mainPanel(
                 navset_card_underline(
+                  
+## ---- Experiments Data Table Sub-Tab ----
                   nav_panel("Data Table", 
                             # actionButton("exportExpTable", "Export Table", icon = icon("download"))
                             tags$div(
@@ -104,6 +191,9 @@ ui <- fluidPage(
                             ),
                             br(),
                             DTOutput("experimentTable")),
+                            br(),
+
+## ---- Experiments Volcano Plot Sub-Tab ----                            
                   nav_panel("Volcano Plot",
                             # actionButton("exportVolcano", "Export Plot", icon = icon("download")),
                             tags$div(
@@ -115,9 +205,12 @@ ui <- fluidPage(
                                 # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
                               )
                             ),
+                            uiOutput("volcanoWarning"),
                             br(),
                             plotlyOutput("volcanoPlot")
                             ),
+
+## ---- Experiments Expression Heatmap Sub-Tab ----
                   nav_panel("Expression Heatmap",
                             tags$div(
                               style = "text-align: right;",
@@ -129,26 +222,191 @@ ui <- fluidPage(
                               )
                             ),
                             br(),
-                            plotOutput("heatmap"))
-                ),
+                            tags$div(
+                              uiOutput("heatmapText"),
+                              style = "font-size: 16px; color: #2c3e50; font-weight: 500; margin-bottom: 10px;text-align: center;"
+                            ),
+                            # textOutput("heatmapText"),
+                            plotlyOutput("heatmap")),
+                  )
                 # DTOutput("experimentTable"),
-                textOutput("testMessage")
+                # textOutput("testMessage"),
+                # verbatimTextOutput("testSearchExpOutput")
                 )
               ),
-    # nav_panel(title = "Plots",
-    #           fluidRow(
-    #             column(
-    #               width = 12,
-    #               div(
-    #                 style = "background-color: #f0f0f0; padding: 10px; margin-bottom: 10px;",
-    #                 h4("Experiment Summary"),
-    #                 textOutput("plotsAuthorYear"),
-    #                 uiOutput("plotsDescription"),
-    #                 textOutput("plotsContrast")
-    #               )
-    #             )
-    #           ),
-    #           # plotlyOutput("volcanoPlot")
-    #           ),
+# ---- Gene Info Tab ----
+    nav_panel(title = "Gene Info",
+              br(),
+              actionButton("backButton", "Back"),
+              br(),
+              DTOutput("tableGeneInfo")
+              ),
+# ---- Spacer ----
+    nav_spacer(),
+# ---- Upload data Tab ----
+    nav_panel(title = "Upload",
+              br(),
+              #### DE Data upload ####
+              tags$h4("Upload differential expression data:"),
+              tags$h5("To upload differential expression data into the repository, please fill out all the fields below."),
+              br(),
+              useShinyFeedback(),
+              fluidRow(
+                column(3,
+                       tags$label("Author:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Enter the name of the experiment author",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       # textInput("expAuthor", label = NULL, placeholder = "Enter experiment author...")
+                       selectizeInput(
+                         inputId = "expAuthor",
+                         label = NULL,
+                         choices = c("",authors$author),  # Replace with your actual list of authors
+                         selected = "",
+                         multiple = FALSE,
+                         options = list(
+                           placeholder = "Enter experiment author...",
+                           create = TRUE
+                         )
+                       )
+                ),
+                column(3, 
+                       tags$label("Year:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Enter the year of the experiment",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       textInput("expYear", NULL, width = "250px", placeholder = "Enter experiment year...")),
+                column(3, 
+                       tags$label("Fungal species:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Enter the fungal species used in the experiment",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       # textInput("expSpecies", NULL, width = "250px", placeholder = "Enter fungal species...")
+                       selectizeInput(
+                         inputId = "expSpecies",
+                         label = NULL,
+                         choices = c("",queriedSpecies$species),  # Replace with your actual list of authors
+                         selected = "",
+                         multiple = FALSE,
+                         options = list(
+                           placeholder = "Enter fungal species...",
+                           create = TRUE
+                         )
+                       )
+                       ),
+                column(3,  
+                       tags$label("Keywords:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Enter the keywords associated with the experiment, e.g. temperature. Multiple keywords can be entered",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       selectizeInput("expKeywords",
+                                          NULL, choices = keywords$keyword, multiple = TRUE,
+                                          options = list(create = TRUE, placeholder = "Enter experiment keywords...")))
+              ),
+              fluidRow(
+                # column(3, 
+                #        tags$label("Title or description:",
+                #                   tippy(
+                #                     tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                #                     tooltip = "Enter the title or a description of the study",
+                #                     placement = "right",
+                #                     theme = "custom_tooltip",
+                #                     delay = c(0, 0)
+                #                   )
+                #        ),
+                #        textAreaInput("expTitle", NULL, width = "250px", placeholder = "Enter experiment title or description...")),
+                column(3,
+                       tags$label("Choose file:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Select the file containing the differential expression data, either in csv or txt format. 
+                                 This file should contain gene ID in column 1, contrast A and contrast B in columns 2 and 3, and in columns 
+                                 7-11 log2-fold change, log2-fold change standard error, Wald test statistic (optional), p-value, and p-adjusted value.",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       fileInput("chooseDEData", NULL)),
+                column(3, 
+                       tags$label("Title or description:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Enter the title or a description of the study",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       textAreaInput("expTitle", NULL, width = "250px", placeholder = "Enter experiment title or description...")),
+                column(1,
+                       actionButton("uploadDEData", "Upload",
+                                    style = "width: 100%; margin-top: 23px; line-height: 1.8;height: 35px;"))
+                
+              ),
+
+
+              br(), br(),
+              
+              tags$h4("Upload functional annotation data:"),
+              tags$h5("To upload functional annotation data, select a file containing functional annotation data and and specify the data structure."),
+              br(),
+              fluidRow(
+                column(3,
+                       tags$label("Choose file:",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Select the file containing the functional annotation data, either in CSV or TXT format. The file should contain
+                                    gene ID in column 1. If the file contains GO terms, these should be in column 2 and functional annotation in column 3. 
+                                    If GO terms are not available, functional annotation should be in column 2. This setting can be configured in the main interface.",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ),
+                       fileInput("chooseFAData", NULL)
+                       ),
+                column(3,
+                       tags$label("Select the type of annotation in column 2",
+                                  tippy(
+                                    tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
+                                    tooltip = "Select the information present in column 2. If the file contains GO terms, these should be located in column 2
+                                    with gene description in column 3. If the file does not contain GO terms, column 2 should contain gene description
+                                    and column 3 should be empty",
+                                    placement = "right",
+                                    theme = "custom_tooltip",
+                                    delay = c(0, 0)
+                                  )
+                       ), radioButtons("goRadioFAData", NULL, 
+                                       choices = list("GO terms" = 1, "Gene descriptions" = 2),
+                                       selected = 1)
+                       ),
+                column(1,
+                       actionButton("uploadFAData", "Upload",
+                                    style = "width: 100%; margin-top: 0; line-height: 1.8;height: 38px;"))
+              )
+              
+
+              )
     )
 )
