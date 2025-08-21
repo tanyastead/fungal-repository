@@ -43,8 +43,6 @@ keywords <- dbGetQuery(con, "SELECT DISTINCT keyword FROM ExpKeywords")
 # Show list of all authors
 authors <- dbGetQuery(con, "SELECT DISTINCT author FROM Experiments")
 
-# Show list of all genes
-# queriedGenes <- dbGetQuery(con, paste0("SELECT DISTINCT gene_id FROM GeneContrasts WHERE contrast = '", selectedContrast, "';"))
 
 # Define theme
 # Define your custom theme
