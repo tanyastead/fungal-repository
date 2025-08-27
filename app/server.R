@@ -53,19 +53,6 @@ server <- function(input, output, session) {
     if (input$term == "Gene (Name or Function)"){
       req(input$query)
       # Query the DB
-      ### original working 
-      # tableQuery <- dbGetQuery(con, paste0("
-      #       SELECT Genes.species, ExpKeywords.keyword, GeneFunctions.go_term, GeneFunctions_FTS.gene_id, GeneFunctions_FTS.gene_function,
-      #       GeneContrasts.contrast, Experiments.author,Experiments.year,Experiments.description
-      #       FROM GeneFunctions_FTS
-      #       JOIN Genes ON GeneFunctions_FTS.gene_id = Genes.gene_id
-      #       JOIN GeneFunctions on GeneFunctions_FTS.gene_id = GeneFunctions.gene_id
-      #       JOIN GeneContrasts ON GeneFunctions_FTS.gene_id = GeneContrasts.gene_id
-      #       JOIN Experiments ON GeneContrasts.experiment_id = Experiments.experiment_id
-      #       JOIN ExpKeywords ON Experiments.experiment_id = ExpKeywords.experiment_id
-      #       WHERE GeneFunctions_FTS MATCH '",input$query,"';
-      #       "))
-      ### original working 
       funcQuery <- dbGetQuery(con, paste0("
           SELECT 
             Genes.species, 
@@ -167,7 +154,6 @@ server <- function(input, output, session) {
     ## ---- Condition selected ----  
     } else if (input$term == "Condition") {
       req(input$query)
-      ## TODO: CHECK IF THIS QUERY NEEDS FIXING!!
       tableQuery <- dbGetQuery(con, paste0(
         "SELECT
             Experiments.species,
@@ -439,10 +425,6 @@ server <- function(input, output, session) {
     req(experimentData())
     data <- experimentData()
     
-    # remove NA values
-    # data <- df[!is.na(df$pval), ]
-    # data <- filter(data, !is.na(pval))
-    # data$pval <- as.numeric(data$pval)
 
     # Filter based on gene_id
     if (!is.null(input$refineGene)){
@@ -490,10 +472,6 @@ server <- function(input, output, session) {
     return(data)
   })
   
-  ## See what is being outputted 
-  # output$testSearchExpOutput <- renderText({
-  #   paste0("placeholder, typeof:",typeof(input$testSearchExp), " stored: ", input$testSearchExp)
-  # })
 
   ## ---- Render the experiment table in the experiments tab ----
   output$experimentTable <- renderDataTable({
@@ -554,9 +532,6 @@ server <- function(input, output, session) {
     emptyPval <- sum(entire_df$pval == 0)
     removedCols(emptyPval)
     entire_df <- filter(entire_df, pval != 0)
-    print("checking")
-    print(sum(entire_df$pval == 0))
-    print(sum(is.na(entire_df$pval)))
     
     output$volcanoWarning <- renderUI({
       req(removedCols())
@@ -587,8 +562,6 @@ server <- function(input, output, session) {
     }
     
     
-
-    ## TODO: pass pMetric to the function to set plot title and horizotnal text
     # create ggplot volcano plot
     p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval, cont = selectedContrast(), pmetric = pMetric)
     
@@ -627,7 +600,6 @@ server <- function(input, output, session) {
       ))
       processedGeneInfo <- geneQuery %>%
         # mutate go_term to hyperlinks
-        ## TODO: Combine GO terms into single cell
         mutate(
           go_term = if_else(
             is.na(go_term),
@@ -646,9 +618,6 @@ server <- function(input, output, session) {
         summarise(go_term = paste(unique(go_term), collapse = "<br>"), .groups = 'drop')%>%
         # Reorder the columns to the correct order
         select(gene_id, go_term, gene_function)
-      
-      
-
       
       
       geneInfo(processedGeneInfo)
@@ -700,10 +669,7 @@ server <- function(input, output, session) {
  
   ## ---- Generate heatmap ----
   output$heatmap <- renderPlotly({
-    ##TODO: Set log2FC scale to static???
-    ## TODO: Change GeneFunctions!!!
     # Execute DB search
-    ## TODO: Check if this needs to be fixed to align with new schema
     all_DEGs <- dbGetQuery(con, paste0(
       "SELECT
         GeneContrasts.gene_id,
@@ -797,8 +763,6 @@ server <- function(input, output, session) {
       plot <- plotly_DEG_heatmap(plot_data)
       plot
       
-      # save the heatmap so it can be downloaded
-      # heatmap(plot) # TODO: this is necessary to download the plot, but doesn't allow the heatmap to be
       
     } else {
       # Print output mnessage
@@ -813,8 +777,6 @@ server <- function(input, output, session) {
       plot(1, type = "n", axes = FALSE, xlab = "", ylab = "", main = "")
     }
     
-    
-
   })
 
   
@@ -822,21 +784,6 @@ server <- function(input, output, session) {
   observeEvent(event_data("plotly_click", source = "heat"), {
     click <- event_data("plotly_click", source = "heat")
     if (!is.null(click)) {
-      # print("click:")
-      # print(click)
-      # # print(click$key, 
-      # #       # event_data("plotly_click", source="volc")
-      # # )
-      # print("str click:")
-      # print(str(click))
-      # selected_gene <- filter(heatmapPlotData(),
-      #                                contrast == click$x,
-      #                                gene_id == click$y)
-      # print("selected gene:")
-      # print(selected_gene)
-      print("customdata:")
-      print(click$customdata)
-      
       # conduct query
       geneQuery <- dbGetQuery(con, paste0(
         "SELECT
@@ -850,7 +797,6 @@ server <- function(input, output, session) {
       ))
       processedGeneInfo <- geneQuery %>%
         # mutate go_term to hyperlinks
-        ## TODO: Combine GO terms into single cell
         mutate(
           go_term = if_else(
             is.na(go_term),
@@ -869,10 +815,6 @@ server <- function(input, output, session) {
         summarise(go_term = paste(unique(go_term), collapse = "<br>"), .groups = 'drop')%>%
         # Reorder the columns to the correct order
         select(gene_id, go_term, gene_function)
-      
-      
-      
-      
       
       geneInfo(processedGeneInfo)
       # open tab
@@ -902,32 +844,7 @@ server <- function(input, output, session) {
     }
   )
   
-  # ## ---- Download button downloads volcano plot ----
-  # output$exportVolcano <- downloadHandler(
-  #   filename = function() {
-  #     paste0(selectedContrast(), "_", 
-  #            selectedAuthor(), "_", 
-  #            selectedYear(), "_", 
-  #            format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), 
-  #            ".png")
-  #   },
-  #   content = function(file) {
-  #     ggsave(
-  #       filename = file,
-  #       plot = volcano(), 
-  #       device = "png",
-  #       width = 8,
-  #       height = 6,
-  #       dpi = 300
-  #     )
-  #   }
-  # )
-  
-  
-  ## ---- TEST: Run python script from r shiny ----
-  # observeEvent(input$uploadData, {
-  #   reticulate::py_run_file("/Users/tanyastead/Documents/MSc_Bioinformatics/11_Individual_Project/fungal-repository/database/DEG_Data/test_python.py")
-  # })
+
   
   ## ---- Run populate_genes.py to populate database with DE data ----
   observeEvent(input$uploadDEData, {
@@ -980,7 +897,7 @@ server <- function(input, output, session) {
     for (key in input$expKeywords){
       keys <- c(keys, "-k", key)
     }
-    print(keys)
+
     
     # Build list of arguments
     script_args <- c("database/populate_genes.py",
@@ -992,15 +909,9 @@ server <- function(input, output, session) {
               "-d", "../database/repository.sqlite"
               )
     script_args <- c(script_args, keys)
-    # print(args)
     
     # Convert arguments to python style sys.argv string
     arg_string <- paste0("import sys; sys.argv = ", toJSON(script_args, auto_unbox = TRUE))
-    # print(arg_string)
-    
-    # # check that wd is correct
-    # print(getwd())
-    # py_run_string("import os; print('Python cwd:', os.getcwd())")
     
     # Run code to set sys.argv in python
     py_run_string(arg_string)
@@ -1053,8 +964,6 @@ server <- function(input, output, session) {
                 "-d", "../database/repository.sqlite")
     }
     
-    print("printing args--------------")
-    print(script_args)
     # Convert arguments to python style sys.argv string
     arg_string <- paste0("import sys; sys.argv = ", toJSON(script_args, auto_unbox = TRUE))
 
@@ -1073,8 +982,5 @@ server <- function(input, output, session) {
     
     # Clear the inputs
     reset("chooseFAData")
-    
-    
   })
-  
 }

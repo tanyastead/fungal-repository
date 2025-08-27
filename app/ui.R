@@ -37,8 +37,6 @@ ui <- fluidPage(
                               div(style = "text-align: center; color: #555; font-style: italic;",
                                   "Search by gene ID, gene function or experimental condition (e.g. temperature)"
                               )
-
-                              
               ))
               ),
  # ---- Results Tab ----
@@ -52,14 +50,6 @@ ui <- fluidPage(
                                multiple = TRUE,
                                options = list(placeholder = "Enter species...")),
 
-                
-                
-                # selectizeInput("refineCondition",
-                #                NULL,
-                #                choices = NULL,
-                #                multiple = TRUE,
-                #                options = list(placeholder = "Enter condition...")),
-                # actionButton("toggle_logic", label = "", icon = icon("chevron-down")),
                 div(style = "display: flex; align-items: center; gap: 10px;",
                     div(style = "flex-grow: 1;",
                         selectizeInput("refineCondition",
@@ -92,11 +82,6 @@ ui <- fluidPage(
               ),
               mainPanel(
                 DTOutput("tableData"),
-                # textOutput("speciesMessage"),
-                # textOutput("keywordMessage"),
-                # textOutput("fromYearMessage"),
-                # textOutput("toYearMessage"),
-                # verbatimTextOutput("troubleshootingCondition")
               )
             ),
 # ---- Experiments Tab ----
@@ -121,12 +106,6 @@ ui <- fluidPage(
                                choices = NULL,
                                multiple = TRUE,
                                options = list(placeholder = "Enter gene name...")),
-                # refine output - gene function??
-                # selectizeInput("refineFunctionExp", 
-                #                NULL, choices = NULL, multiple = TRUE, 
-                #                options = list(create = TRUE, placeholder = "Enter functional annotation...")),
-                
-                
                 
                 div(style = "display: flex; align-items: center; gap: 10px;",
                     div(style = "flex-grow: 1;",
@@ -146,8 +125,6 @@ ui <- fluidPage(
                                    inline = TRUE)
                   )
                 ),
-                
-                
                 
                 numericInput("pvalue",
                              "p-value <",
@@ -178,7 +155,6 @@ ui <- fluidPage(
                   
 ## ---- Experiments Data Table Sub-Tab ----
                   nav_panel("Data Table", 
-                            # actionButton("exportExpTable", "Export Table", icon = icon("download"))
                             tags$div(
                               style = "text-align: right;",
                               downloadButton(
@@ -195,14 +171,11 @@ ui <- fluidPage(
 
 ## ---- Experiments Volcano Plot Sub-Tab ----                            
                   nav_panel("Volcano Plot",
-                            # actionButton("exportVolcano", "Export Plot", icon = icon("download")),
                             tags$div(
                               style = "text-align: right;",
                               downloadButton(
                                 outputId = "exportVolcano", 
                                 label = "Export Plot", 
-                                # icon = icon("download"),
-                                # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
                               )
                             ),
                             uiOutput("volcanoWarning"),
@@ -217,8 +190,6 @@ ui <- fluidPage(
                               downloadButton(
                                 outputId = "exportHeatmap", 
                                 label = "Export Plot", 
-                                # icon = icon("download"),
-                                # style = "font-size: 14px; padding: 6px 12px;"  # Adjust size here
                               )
                             ),
                             br(),
@@ -229,9 +200,6 @@ ui <- fluidPage(
                             # textOutput("heatmapText"),
                             plotlyOutput("heatmap")),
                   )
-                # DTOutput("experimentTable"),
-                # textOutput("testMessage"),
-                # verbatimTextOutput("testSearchExpOutput")
                 )
               ),
 # ---- Gene Info Tab ----
@@ -262,11 +230,11 @@ ui <- fluidPage(
                                     delay = c(0, 0)
                                   )
                        ),
-                       # textInput("expAuthor", label = NULL, placeholder = "Enter experiment author...")
+                       
                        selectizeInput(
                          inputId = "expAuthor",
                          label = NULL,
-                         choices = c("",authors$author),  # Replace with your actual list of authors
+                         choices = c("",authors$author),  
                          selected = "",
                          multiple = FALSE,
                          options = list(
@@ -296,11 +264,11 @@ ui <- fluidPage(
                                     delay = c(0, 0)
                                   )
                        ),
-                       # textInput("expSpecies", NULL, width = "250px", placeholder = "Enter fungal species...")
+                       
                        selectizeInput(
                          inputId = "expSpecies",
                          label = NULL,
-                         choices = c("",queriedSpecies$species),  # Replace with your actual list of authors
+                         choices = c("",queriedSpecies$species),  
                          selected = "",
                          multiple = FALSE,
                          options = list(
@@ -324,17 +292,6 @@ ui <- fluidPage(
                                           options = list(create = TRUE, placeholder = "Enter experiment keywords...")))
               ),
               fluidRow(
-                # column(3, 
-                #        tags$label("Title or description:",
-                #                   tippy(
-                #                     tags$i(class = "fas fa-info-circle", style = "margin-left: 5px; cursor: pointer;"),
-                #                     tooltip = "Enter the title or a description of the study",
-                #                     placement = "right",
-                #                     theme = "custom_tooltip",
-                #                     delay = c(0, 0)
-                #                   )
-                #        ),
-                #        textAreaInput("expTitle", NULL, width = "250px", placeholder = "Enter experiment title or description...")),
                 column(3,
                        tags$label("Choose file:",
                                   tippy(
@@ -405,8 +362,6 @@ ui <- fluidPage(
                        actionButton("uploadFAData", "Upload",
                                     style = "width: 100%; margin-top: 0; line-height: 1.8;height: 38px;"))
               )
-              
-
               )
     )
 )

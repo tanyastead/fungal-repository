@@ -43,14 +43,11 @@ keywords <- dbGetQuery(con, "SELECT DISTINCT keyword FROM ExpKeywords")
 # Show list of all authors
 authors <- dbGetQuery(con, "SELECT DISTINCT author FROM Experiments")
 
-# Show list of all genes
-# queriedGenes <- dbGetQuery(con, paste0("SELECT DISTINCT gene_id FROM GeneContrasts WHERE contrast = '", selectedContrast, "';"))
 
 # Define theme
-# Define your custom theme
 my_theme <- bs_theme(
   version = 5,
-  bg = "#f8f9fa",       # Background of the whole page
-  fg = "#000",          # Text color
-  primary = "#0066cc"   # This sets the navbar/tab highlight color
+  bg = "#f8f9fa",       
+  fg = "#000",          
+  primary = "#0066cc"   
 )
