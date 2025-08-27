@@ -45,10 +45,9 @@ authors <- dbGetQuery(con, "SELECT DISTINCT author FROM Experiments")
 
 
 # Define theme
-# Define your custom theme
 my_theme <- bs_theme(
   version = 5,
-  bg = "#f8f9fa",       # Background of the whole page
-  fg = "#000",          # Text color
-  primary = "#0066cc"   # This sets the navbar/tab highlight color
+  bg = "#f8f9fa",       
+  fg = "#000",          
+  primary = "#0066cc"   
 )

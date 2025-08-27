@@ -562,8 +562,6 @@ server <- function(input, output, session) {
     }
     
     
-
-    ## TODO: pass pMetric to the function to set plot title and horizotnal text
     # create ggplot volcano plot
     p <- interactive_volcano(data = entire_df, lFC = fold, pv = pval, cont = selectedContrast(), pmetric = pMetric)
     
@@ -620,7 +618,6 @@ server <- function(input, output, session) {
         summarise(go_term = paste(unique(go_term), collapse = "<br>"), .groups = 'drop')%>%
         # Reorder the columns to the correct order
         select(gene_id, go_term, gene_function)
-      
       
       
       geneInfo(processedGeneInfo)
@@ -800,7 +797,6 @@ server <- function(input, output, session) {
       ))
       processedGeneInfo <- geneQuery %>%
         # mutate go_term to hyperlinks
-        ## TODO: Combine GO terms into single cell
         mutate(
           go_term = if_else(
             is.na(go_term),
@@ -901,7 +897,7 @@ server <- function(input, output, session) {
     for (key in input$expKeywords){
       keys <- c(keys, "-k", key)
     }
-    print(keys)
+
     
     # Build list of arguments
     script_args <- c("database/populate_genes.py",
@@ -968,8 +964,6 @@ server <- function(input, output, session) {
                 "-d", "../database/repository.sqlite")
     }
     
-    print("printing args--------------")
-    print(script_args)
     # Convert arguments to python style sys.argv string
     arg_string <- paste0("import sys; sys.argv = ", toJSON(script_args, auto_unbox = TRUE))
 
